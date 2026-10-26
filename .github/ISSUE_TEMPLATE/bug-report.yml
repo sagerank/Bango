@@ -1,0 +1,25 @@
+name: Bug report
+description: Something does not work as expected.
+labels: ["bug"]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Mac model, chip and macOS version
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: recording
+    attributes:
+      label: Recording
+      description: For missed taps or false triggers, record 10 seconds in Activity, Lab and attach the CSV. It holds motion numbers only, never what you typed.

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # The detector, gesture rules, profiles and safety policy use only Foundation,
+  # so they are tested on Linux where runners are cheap and fast.
+  core-tests:
+    name: TapCore tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+
+  # The real app, with the same tests, on Apple Silicon.
+  macos:
+    name: Build and test (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift test
+      - run: ./scripts/build.sh --unsigned
+      - name: Package the unsigned app
+        run: ditto -c -k --keepParent dist/TapDeck.app dist/TapDeck-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TapDeck-unsigned
+          path: dist/TapDeck-unsigned.zip
+          if-no-files-found: error

@@ -1,0 +1,146 @@
+import SwiftUI
+import TapCore
+
+/// First launch: check the hardware, explain permissions, let the user try a tap, start in test mode.
+struct OnboardingView: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var store: ConfigStore
+    @EnvironmentObject private var monitor: MotionMonitor
+    @EnvironmentObject private var engine: Engine
+    @Environment(\.dismiss) private var dismiss
+
+    private enum Step: Int, CaseIterable { case hardware, permissions, tryIt, safeStart }
+
+    @State private var step = Step.hardware
+    @State private var token = UUID()
+    @State private var lastGesture: RecognizedGesture?
+    @State private var accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
+    @State private var startInTestMode = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 6) {
+                ForEach(Step.allCases, id: \.rawValue) { s in
+                    Capsule()
+                        .fill(s.rawValue <= step.rawValue ? Theme.accent : Theme.surfaceRaised)
+                        .frame(height: 4)
+                }
+            }
+
+            content
+
+            Spacer()
+            footer
+        }
+        .padding(28)
+        .frame(width: 540, height: 480)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+        .interactiveDismissDisabled()
+        .onAppear { engine.beginPractice(token) { gesture in lastGesture = gesture } }
+        .onDisappear { engine.endPractice(token) }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch step {
+        case .hardware:
+            VStack(alignment: .leading, spacing: 16) {
+                PageHeader(title: "Tap your Mac to control it", subtitle: "TapDeck turns taps on the body of your MacBook into actions: copy, paste, volume, lock screen, and more.")
+                Card {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if monitor.isSupported && monitor.isMonitoring {
+                            Label("Motion sensor found.", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.good)
+                            Text(monitor.hasGyroscope ? "Gyroscope found too, so tap zones can work." : "No gyroscope found. Tap counts still work. Tap zones may be less reliable.")
+                                .font(.callout).foregroundStyle(Theme.secondary)
+                        } else {
+                            Label("No motion sensor found.", systemImage: "xmark.circle.fill").foregroundStyle(Theme.danger)
+                            Text(monitor.statusMessage).font(.callout).foregroundStyle(Theme.secondary)
+                            Text("TapDeck needs the built-in accelerometer of an Apple Silicon MacBook. You can look around, but taps will not be detected on this Mac.")
+                                .font(.callout).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
+            }
+        case .permissions:
+            VStack(alignment: .leading, spacing: 16) {
+                PageHeader(title: "One permission", subtitle: "To press keys on your behalf, macOS asks you to allow TapDeck under Accessibility.")
+                Card {
+                    HStack {
+                        Image(systemName: accessibilityTrusted ? "checkmark.circle.fill" : "circle.dashed")
+                            .foregroundStyle(accessibilityTrusted ? Theme.good : Theme.secondary)
+                        Text("Accessibility").foregroundStyle(Theme.text)
+                        Spacer()
+                        if !accessibilityTrusted {
+                            Button("Allow") {
+                                _ = AccessibilityPermission.requestIfNeeded()
+                            }
+                            .buttonStyle(.pillPrimary)
+                            Button("Check") {
+                                accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
+                            }
+                            .buttonStyle(.pill)
+                        }
+                    }
+                }
+                Text("You can skip this. Actions that only need the system, like keeping the Mac awake, work without it. TapDeck never records what you type.")
+                    .font(.callout).foregroundStyle(Theme.secondary)
+            }
+        case .tryIt:
+            VStack(alignment: .leading, spacing: 16) {
+                PageHeader(title: "Try a tap", subtitle: "Tap the palm rest or the lid once, or tap twice quickly. Nothing will run yet.")
+                Card {
+                    HStack(spacing: 14) {
+                        IconBadge(symbol: "hand.tap", size: 44)
+                        if let lastGesture {
+                            Text(Describe.gesture(lastGesture)).font(.title3.weight(.semibold)).foregroundStyle(Theme.text)
+                        } else {
+                            Text("Waiting for a tap").font(.title3.weight(.semibold)).foregroundStyle(Theme.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                Text("If nothing shows up, open Tuning later and raise the sensitivity. If it jumps around while you type, the typing guard handles most of it.")
+                    .font(.callout).foregroundStyle(Theme.secondary)
+            }
+        case .safeStart:
+            VStack(alignment: .leading, spacing: 16) {
+                PageHeader(title: "Start safely", subtitle: "A few starter gestures are ready: one tap plays or pauses, two copy, three paste, four lock the screen.")
+                Card {
+                    Toggle(isOn: $startInTestMode) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Test mode for the first 24 hours").foregroundStyle(Theme.text)
+                            Text("Gestures are recognized and listed in Activity, but nothing runs. Use the Mac as usual, then check Activity for anything unexpected before you switch it off in General.")
+                                .font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            if step != .hardware {
+                Button("Back") { step = Step(rawValue: step.rawValue - 1) ?? .hardware }.buttonStyle(.pill)
+            }
+            Spacer()
+            if step == .safeStart {
+                Button("Finish") { finish() }.buttonStyle(.pillPrimary)
+            } else {
+                Button(step == .permissions && !accessibilityTrusted ? "Skip" : "Continue") {
+                    step = Step(rawValue: step.rawValue + 1) ?? .safeStart
+                }
+                .buttonStyle(.pillPrimary)
+            }
+        }
+    }
+
+    private func finish() {
+        store.update { config in
+            config.hasCompletedOnboarding = true
+            if startInTestMode { config.startDryRun() }
+        }
+        dismiss()
+    }
+}
