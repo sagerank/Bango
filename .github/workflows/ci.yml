@@ -24,8 +24,11 @@ jobs:
   macos:
     name: Build and test (macOS)
     runs-on: macos-15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      # For the drag-to-Applications disk image. If it fails, the build falls back to a plain image.
+      - run: brew install create-dmg || true
       - run: swift --version
       - run: swift test
       - run: ./scripts/build.sh --unsigned

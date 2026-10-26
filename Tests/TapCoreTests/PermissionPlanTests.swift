@@ -60,3 +60,31 @@ final class PermissionPlanTests: XCTestCase {
         XCTAssertLessThan(order.firstIndex(of: .screenshotFolder)!, order.firstIndex(of: .screenRecording)!)
     }
 }
+
+final class SetupPolicyTests: XCTestCase {
+    private func show(done: Bool = true, last: String? = nil, build: String = "9-0.9.3", ax: Bool = true, screen: Bool = true) -> Bool {
+        SetupPolicy.shouldShowSetup(
+            onboardingDone: done, lastSetupBuild: last, currentBuild: build,
+            accessibilityGranted: ax, screenRecordingGranted: screen
+        )
+    }
+
+    func testFirstRunAlwaysShowsSetup() {
+        XCTAssertTrue(show(done: false, ax: true, screen: true))
+    }
+
+    func testReinstallWithOldSettingsShowsSetupWhenPermissionsAreGone() {
+        // The settings file survives an uninstall, the macOS permissions do not.
+        XCTAssertTrue(show(done: true, last: nil, ax: false, screen: false))
+    }
+
+    func testNewBuildAskedAgainOnlyIfSomethingIsMissing() {
+        XCTAssertTrue(show(last: "8-0.9.2", ax: false))
+        XCTAssertTrue(show(last: "8-0.9.2", screen: false))
+        XCTAssertFalse(show(last: "8-0.9.2"))
+    }
+
+    func testStaysQuietOnceThisBuildWasSetUp() {
+        XCTAssertFalse(show(last: "9-0.9.3", ax: false, screen: false))
+    }
+}

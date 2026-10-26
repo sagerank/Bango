@@ -6,6 +6,9 @@ struct PermissionsPanel: View {
     @EnvironmentObject private var store: ConfigStore
     @ObservedObject private var center = PermissionCenter.shared
     @State private var confirmReset = false
+    @State private var didAutoStart = false
+    /// Start asking as soon as the panel appears, instead of waiting for the button.
+    var autoStart = false
 
     private var usage: [SetupItem: [String]] { PermissionPlan.usage(in: store.config) }
 
@@ -49,6 +52,11 @@ struct PermissionsPanel: View {
         }
         .task {
             await center.refreshAll()
+            if autoStart, !didAutoStart, !center.isRunning, !center.allDone {
+                didAutoStart = true
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await center.setUp()
+            }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 center.refreshQuick()

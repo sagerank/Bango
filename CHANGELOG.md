@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.4
+
+Setup that cannot be missed, and a proper installer window. **Not yet seen running on a Mac by the author.**
+
+- Cause of the silent start in 0.9.3: settings survive an uninstall, so the app believed the welcome tour was done, hid its window and had no permissions, because macOS forgets them for every new unsigned build. Now the window opens by itself, on the permissions step, whenever the tour was never finished, or this build has not been through setup and Accessibility or Screen Recording is missing
+- Setup starts asking by itself when the permissions step opens, with a Skip button for each item
+- New Setup page at the top of the sidebar, with an orange dot while something is missing, showing the sensor, its rate, and every permission
+- The menu bar popover shows "Setup is not finished" with a Finish setup button
+- Clicking the app icon again, or opening it from Applications while it runs, brings the window back
+- The disk image has a designed window: background, arrow, TapDeck on the left and the Applications shortcut on the right. If the styling tool fails, a plain disk image is made instead
+- 4 new tests (103 in total) for when setup must appear
+
 ## 0.9.3
 
 One-screen setup and animated feedback. **The new interface code is compiled by CI but has not been seen running on a Mac by the author. Treat the look and the permission flow as unverified until you have tried them.**

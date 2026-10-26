@@ -36,7 +36,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
 
+    /// Clicking the app icon again, or opening it from Applications while it runs, brings the window back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { NotificationCenter.default.post(name: .tapDeckShowWindow, object: nil) }
+        return true
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
+}
+
+extension Notification.Name {
+    static let tapDeckShowWindow = Notification.Name("tapDeckShowWindow")
 }

@@ -57,6 +57,57 @@ if [ "$MODE" = "release" ]; then
     : "${TAPDECK_NOTARY_PROFILE:?Set TAPDECK_NOTARY_PROFILE for a release build}"
 fi
 
+
+# ── Disk image ─────────────────────────────────────────────────
+# A drag-to-Applications window with a background and an arrow. It needs the create-dmg tool
+# (brew install create-dmg) and a Finder session. If either is missing or styling fails, a plain
+# disk image is made instead, so the build never fails because of the artwork.
+make_dmg() {
+    local output="$1"
+    local stage
+    stage=$(mktemp -d)
+    ditto "$BUNDLE" "$stage/$APP_NAME.app"
+    rm -f "$output"
+
+    local styled=0
+    if command -v create-dmg >/dev/null 2>&1 && [ -f assets/dmg-background@2x.png ]; then
+        local art
+        art=$(mktemp -d)
+        cp assets/dmg-background@2x.png "$art/bg@2x.png"
+        sips -s dpiWidth 144 -s dpiHeight 144 "$art/bg@2x.png" >/dev/null 2>&1 || true
+        sips -z 400 660 -s dpiWidth 72 -s dpiHeight 72 assets/dmg-background@2x.png --out "$art/bg.png" >/dev/null 2>&1 || true
+        local background="$art/bg.png"
+        if tiffutil -cathidpicheck "$art/bg.png" "$art/bg@2x.png" -out "$art/bg.tiff" >/dev/null 2>&1; then
+            background="$art/bg.tiff"
+        fi
+        if create-dmg \
+            --volname "$APP_NAME" \
+            --background "$background" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 128 \
+            --text-size 13 \
+            --icon "$APP_NAME.app" 180 190 \
+            --hide-extension "$APP_NAME.app" \
+            --app-drop-link 480 190 \
+            --no-internet-enable \
+            "$output" "$stage" >/dev/null 2>&1 && [ -f "$output" ]; then
+            styled=1
+            echo "  ✓ Disk image with the drag-to-Applications window"
+        else
+            echo "  ! create-dmg did not finish. Making a plain disk image instead." >&2
+            rm -f "$output"
+        fi
+        rm -rf "$art"
+    fi
+
+    if [ "$styled" = 0 ]; then
+        ln -s /Applications "$stage/Applications"
+        hdiutil create -volname "$APP_NAME" -srcfolder "$stage" -ov -format UDZO "$output" >/dev/null
+    fi
+    rm -rf "$stage"
+}
+
 # ── Step 1: Build ──────────────────────────────────────────────
 echo "▸ Building $APP_NAME $VERSION (release, arm64)..."
 swift build -c release --arch arm64
@@ -130,14 +181,9 @@ echo "  ✓ Bundle created: $BUNDLE"
 if [ "$MODE" = "unsigned" ]; then
     codesign --force --deep --sign - --timestamp=none --entitlements "$ENTITLEMENTS" "$BUNDLE"
     codesign --verify --deep --strict "$BUNDLE"
-    # A simple drag-to-Applications disk image, for installing on your own Mac.
+    # A drag-to-Applications disk image, for installing on your own Mac.
     UNSIGNED_DMG="$DIST_DIR/$APP_NAME-$VERSION-unsigned.dmg"
-    rm -f "$UNSIGNED_DMG"
-    DMG_STAGE=$(mktemp -d)
-    ditto "$BUNDLE" "$DMG_STAGE/$APP_NAME.app"
-    ln -s /Applications "$DMG_STAGE/Applications"
-    hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGE" -ov -format UDZO "$UNSIGNED_DMG" >/dev/null
-    rm -rf "$DMG_STAGE"
+    make_dmg "$UNSIGNED_DMG"
     echo ""
     echo "✓ Ready: $BUNDLE and $UNSIGNED_DMG (ad-hoc signed, for this Mac only)"
     echo "  Install: open the DMG and drag TapDeck to Applications. Or run:  open $BUNDLE"
@@ -174,12 +220,7 @@ echo "  ✓ Notarized and stapled"
 
 # ── Release: DMG ───────────────────────────────────────────────
 echo "▸ Creating DMG..."
-rm -f "$DMG"
-STAGE=$(mktemp -d)
-ditto "$BUNDLE" "$STAGE/$APP_NAME.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
-rm -rf "$STAGE"
+make_dmg "$DMG"
 codesign --force --sign "$IDENTITY" --timestamp "$DMG"
 xcrun notarytool submit "$DMG" --keychain-profile "$TAPDECK_NOTARY_PROFILE" --wait
 xcrun stapler staple "$DMG"

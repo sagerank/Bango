@@ -30,6 +30,30 @@ final class PermissionCenter: ObservableObject {
     private let screenRequestedKey = "setup.screenRecordingRequested"
     private let folderGrantedKey = "setup.screenshotFolderGrantedForBuild"
 
+    private let setupBuildKey = "setup.lastSetupBuild"
+
+    /// True when the setup screen must open by itself at launch.
+    func needsSetupAtLaunch(onboardingDone: Bool) -> Bool {
+        refreshQuick()
+        return SetupPolicy.shouldShowSetup(
+            onboardingDone: onboardingDone,
+            lastSetupBuild: defaults.string(forKey: setupBuildKey),
+            currentBuild: buildID,
+            accessibilityGranted: state(.accessibility) == .granted,
+            screenRecordingGranted: state(.screenRecording) == .granted || state(.screenRecording) == .needsRestart
+        )
+    }
+
+    /// Remember that this build went through setup, so it does not come up again on every launch.
+    func markSetupSeen() {
+        defaults.set(buildID, forKey: setupBuildKey)
+    }
+
+    /// Something the main actions need is still off. Cheap, for badges.
+    var needsAttention: Bool {
+        [SetupItem.accessibility, .screenRecording].contains { state($0) == .missing }
+    }
+
     private var buildID: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
         return version + "-" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0")

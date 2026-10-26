@@ -3,12 +3,13 @@ import SwiftUI
 import TapCore
 
 enum DashboardSection: String, CaseIterable, Identifiable {
-    case gestures, profiles, tuning, zones, activity, general
+    case setup, gestures, profiles, tuning, zones, activity, general
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .setup: return "Setup"
         case .gestures: return "Gestures"
         case .profiles: return "Profiles"
         case .tuning: return "Tuning"
@@ -20,6 +21,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .setup: return "checkmark.shield"
         case .gestures: return "hand.tap"
         case .profiles: return "person.2"
         case .tuning: return "slider.horizontal.3"
@@ -35,6 +37,8 @@ struct DashboardView: View {
     @EnvironmentObject private var store: ConfigStore
     @State private var selection: DashboardSection = .gestures
     @State private var showOnboarding = false
+    @State private var onboardingStartsAtPermissions = false
+    @ObservedObject private var permissions = PermissionCenter.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -57,17 +61,30 @@ struct DashboardView: View {
         .background(
             WindowObserver { window in
                 model.mainWindow = window
-                if store.config.hasCompletedOnboarding, !model.userRequestedWindow {
-                    // Started at login: stay out of the way until the user opens the window.
+                let done = store.config.hasCompletedOnboarding
+                let needsSetup = permissions.needsSetupAtLaunch(onboardingDone: done)
+                if !needsSetup, done, !model.userRequestedWindow {
+                    // Started at login with nothing to set up: stay out of the way until the user opens the window.
                     window.orderOut(nil)
                 } else {
-                    if !store.config.hasCompletedOnboarding { showOnboarding = true }
+                    if needsSetup {
+                        onboardingStartsAtPermissions = done
+                        selection = .setup
+                        showOnboarding = true
+                    }
                     model.showMainWindow()
                 }
             }
         )
+        .task {
+            // Keeps the Setup badge honest while the window is open.
+            while !Task.isCancelled {
+                permissions.refreshQuick()
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
         .sheet(isPresented: $showOnboarding) {
-            OnboardingView()
+            OnboardingView(startAtPermissions: onboardingStartsAtPermissions)
                 .environmentObject(model)
                 .environmentObject(store)
                 .environmentObject(model.monitor)
@@ -91,6 +108,9 @@ struct DashboardView: View {
                         Image(systemName: section.symbol).frame(width: 18)
                         Text(section.title)
                         Spacer()
+                        if section == .setup && permissions.needsAttention {
+                            Circle().fill(Theme.warning).frame(width: 8, height: 8)
+                        }
                     }
                     .font(.callout.weight(selection == section ? .semibold : .regular))
                     .foregroundStyle(selection == section ? Theme.text : Theme.secondary)
@@ -117,6 +137,7 @@ struct DashboardView: View {
     @ViewBuilder
     private var detail: some View {
         switch selection {
+        case .setup: SetupView(showTour: { onboardingStartsAtPermissions = false; showOnboarding = true })
         case .gestures: GesturesView(goToZones: { selection = .zones })
         case .profiles: ProfilesView()
         case .tuning: TuningView()

@@ -8,6 +8,7 @@ struct MenuBarView: View {
     @EnvironmentObject private var monitor: MotionMonitor
     @EnvironmentObject private var engine: Engine
     @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var permissions = PermissionCenter.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -15,6 +16,10 @@ struct MenuBarView: View {
             WaveformView(values: monitor.waveform, threshold: monitor.snapshot.threshold)
                 .frame(height: 56)
 
+            if permissions.needsAttention {
+                Notice(style: .warning, text: "Setup is not finished. Some actions will not work until you allow them.")
+                Button("Finish setup") { open() }.buttonStyle(.pillPrimary)
+            }
             if store.config.isDryRun() {
                 Notice(style: .info, text: "Test mode is on. Gestures are shown but nothing runs.")
             }
@@ -56,6 +61,7 @@ struct MenuBarView: View {
         }
         .padding(16)
         .frame(width: 300)
+        .onAppear { permissions.refreshQuick() }
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }

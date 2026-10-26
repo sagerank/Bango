@@ -61,6 +61,11 @@ final class AppModel: ObservableObject {
             .sink { [weak self] in self?.menuBarSymbol = $0 }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: .tapDeckShowWindow)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.showMainWindow() }
+            .store(in: &cancellables)
+
         if let damaged = store.recoveredFromDamagedFile {
             NSLog("TapDeck: settings file was damaged, moved to \(damaged.path)")
         }

@@ -11,11 +11,17 @@ struct OnboardingView: View {
 
     private enum Step: Int, CaseIterable { case hardware, permissions, tryIt, safeStart }
 
-    @State private var step = Step.hardware
+    @State private var step: Step
     @State private var token = UUID()
     @State private var lastGesture: RecognizedGesture?
     @ObservedObject private var permissions = PermissionCenter.shared
     @State private var startInTestMode = true
+
+    /// `startAtPermissions` is for people who already finished the tour but lost their permissions,
+    /// for example after installing a new build.
+    init(startAtPermissions: Bool = false) {
+        _step = State(initialValue: startAtPermissions ? .permissions : .hardware)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -65,7 +71,7 @@ struct OnboardingView: View {
         case .permissions:
             VStack(alignment: .leading, spacing: 14) {
                 PageHeader(title: "Allow everything once", subtitle: "Press the button and TapDeck asks macOS for every permission its actions use, one after another. You can skip any of them.")
-                PermissionsPanel()
+                PermissionsPanel(autoStart: true)
             }
         case .tryIt:
             VStack(alignment: .leading, spacing: 16) {
@@ -118,10 +124,12 @@ struct OnboardingView: View {
     }
 
     private func finish() {
+        let firstTime = !store.config.hasCompletedOnboarding
         store.update { config in
             config.hasCompletedOnboarding = true
-            if startInTestMode { config.startDryRun() }
+            if firstTime && startInTestMode { config.startDryRun() }
         }
+        permissions.markSetupSeen()
         dismiss()
     }
 }

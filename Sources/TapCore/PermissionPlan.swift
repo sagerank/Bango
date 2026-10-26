@@ -89,3 +89,21 @@ public enum PermissionPlan {
         return result
     }
 }
+
+/// Decides when the setup screen must come up by itself.
+public enum SetupPolicy {
+    /// Show setup when the tour was never finished, or when this build has not been through setup yet and a
+    /// permission the main actions need is missing. A new unsigned build counts as a new app to macOS, so
+    /// permissions are lost on every update and the person must be told, not left with a silent app.
+    public static func shouldShowSetup(
+        onboardingDone: Bool,
+        lastSetupBuild: String?,
+        currentBuild: String,
+        accessibilityGranted: Bool,
+        screenRecordingGranted: Bool
+    ) -> Bool {
+        if !onboardingDone { return true }
+        if lastSetupBuild == currentBuild { return false }
+        return !accessibilityGranted || !screenRecordingGranted
+    }
+}
