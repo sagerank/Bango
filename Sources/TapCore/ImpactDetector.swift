@@ -65,8 +65,9 @@ public struct DetectorSnapshot: Equatable, Sendable {
     public var motionLevel = 0.0
     /// True while taps are being ignored because of typing or clicking.
     public var guarded = false
-    /// How strongly the newest sample differs from what the ringing of earlier taps predicts.
-    public var surprise = 0.0
+    /// How far the newest sample stands above the ringing of the last 40 ms. A new knock on top of
+    /// ringing shows up as a ratio well above 1, the decaying ring itself does not.
+    public var rise = 0.0
     /// Why recent bumps were ignored, counted once per bump.
     public var rejections = RejectionCounts()
 
@@ -152,6 +153,8 @@ public final class ImpactDetector {
     private static let quietTail = 0.03
     private static let motionTail = 0.07
     private static let lockoutDuration = 0.9
+    /// Time for the chassis to stop ringing after an accepted tap. Real MacBook: about 0.2 s.
+    private static let tapSettleTime = 0.3
     public static let featureWindow = 0.06
 
     private var lowPass = Vec3.zero
@@ -165,7 +168,6 @@ public final class ImpactDetector {
     private var lockoutUntil = -Double.infinity
     private var history: [Recent] = []
     private var pending: Pending?
-    private var predictor = RingPredictor()
     private var rejections = RejectionCounts()
     private var episode: Episode?
 
@@ -190,7 +192,6 @@ public final class ImpactDetector {
         lockoutUntil = -Double.infinity
         history.removeAll()
         pending = nil
-        predictor.reset()
         rejections = RejectionCounts()
         episode = nil
     }
@@ -207,8 +208,10 @@ public final class ImpactDetector {
         }
 
         var sampleRate = 0.0
+        var elapsed = 0.01
         if let previous = lastTime {
-            sampleRate = 1.0 / max(now - previous, 0.0001)
+            elapsed = max(now - previous, 0.0001)
+            sampleRate = 1.0 / elapsed
         }
         lastTime = now
 
@@ -222,7 +225,6 @@ public final class ImpactDetector {
         let highPassMagnitude = highPass.length
         let jerkMagnitude = jerk.length
         let filtered = max(highPassMagnitude, jerkMagnitude * 0.92)
-        let surprise = predictor.update(highPass)
 
         history.append(Recent(time: now, filtered: filtered, lowStep: lowStep, lowPass: lowPass))
         while let first = history.first, now - first.time > Self.historyWindow {
@@ -230,21 +232,28 @@ public final class ImpactDetector {
         }
 
         let sequenceOpen = now - lastAccepted <= config.groupingWindow
-        // While a tap sequence is open the ringing of the previous taps must not raise the noise floor.
-        let adaptive = sequenceOpen
+        let ringing = now - lastAccepted < Self.tapSettleTime
+        // The ringing of our own taps is not ambient noise, so it must not raise the noise floor.
+        let adaptive = (sequenceOpen || ringing)
             ? currentThreshold(base: config.threshold)
-            : updateAdaptiveThreshold(base: config.threshold, signal: filtered)
+            : updateAdaptiveThreshold(base: config.threshold, signal: filtered, elapsed: elapsed)
 
         let quiet = window(within: Self.quietWindow, now: now, excludingTail: Self.quietTail)
         let quietValues = quiet.map { $0.filtered }
         let quietAverage = quietValues.isEmpty ? 0 : quietValues.reduce(0, +) / Double(quietValues.count)
         let quietMax = quietValues.max() ?? 0
 
+        // The ringing of our own accepted taps also moves the low-pass output. It is not the Mac
+        // being carried, so only samples after it has settled count towards the motion check.
+        let settled = lastAccepted + Self.tapSettleTime
         let motion = window(within: Self.motionWindow, now: now, excludingTail: Self.motionTail)
+            .filter { $0.time > settled }
         let lowMotion = motion.isEmpty ? 0 : motion.reduce(0) { $0 + $1.lowStep } / Double(motion.count)
         var drift = 0.0
-        if let earliest = motion.first {
-            drift = (lowPass - earliest.lowPass).length
+        // Measured across the window only. Using the current low-pass value would let the tap that
+        // is arriving right now (its slow component moves the output by about 0.1 g) lock itself out.
+        if let earliest = motion.first, let latest = motion.last {
+            drift = (latest.lowPass - earliest.lowPass).length
         }
 
         if !sequenceOpen {
@@ -266,14 +275,19 @@ public final class ImpactDetector {
         let baselineQuiet = quietAverage < adaptive * 0.28 && quietMax < adaptive * 0.72
         // The first tap must look like a knock: sharp and short, after a quiet moment.
         // Follow-up taps land on top of the ringing of the previous one, so they are judged
-        // by how far they depart from what that ringing predicts.
+        // by how far they rise above that ringing.
+        let ringLevel = window(within: Self.riseWindow, now: now, excludingTail: Self.riseTail)
+            .reduce(0) { max($0, $1.filtered) }
+        let rise = filtered / max(ringLevel, 0.001)
         let sharp: Bool
         let brief: Bool
+        // A knock jumps up from what came just before it. A vibration that builds up smoothly does not.
+        let abrupt = rise > Self.riseRatio
         if sequenceOpen {
-            sharp = surprise > adaptive * Self.surpriseRatio
+            sharp = abrupt
             brief = true
         } else {
-            sharp = jerkMagnitude > adaptive * 0.70 || jerkMagnitude > highPassMagnitude * 0.90
+            sharp = abrupt && (jerkMagnitude > adaptive * 0.70 || jerkMagnitude > highPassMagnitude * 0.90)
             brief = impulseDuration <= 0.08
         }
         let passesSequence = sequenceOpen || baselineQuiet
@@ -306,7 +320,12 @@ public final class ImpactDetector {
             if !brief { return .tooLong }
             return nil
         }()
-        trackRejections(filtered: filtered, threshold: adaptive, accepted: accepted, blocker: blocker)
+        // Wiggles in the ringing of a tap we just accepted are not separate bumps worth reporting.
+        let ringWiggle = ringing && (blocker == .notSharp || blocker == .cooldown)
+        trackRejections(
+            filtered: filtered, threshold: adaptive, accepted: accepted,
+            blocker: ringWiggle ? nil : blocker
+        )
 
         var impact: Impact?
         if var p = pending {
@@ -347,7 +366,7 @@ public final class ImpactDetector {
         snapshot.noiseFloor = noiseFloor
         snapshot.motionLevel = max(lowMotion, drift)
         snapshot.guarded = guarded
-        snapshot.surprise = surprise
+        snapshot.rise = rise
         snapshot.rejections = rejections
         return DetectorOutput(snapshot: snapshot, impact: impact)
     }
@@ -367,7 +386,11 @@ public final class ImpactDetector {
         return Array(out.reversed())
     }
 
-    private static let surpriseRatio = 0.8
+    /// A follow-up tap must reach this many times the ringing level of the previous 40 ms.
+    /// Measured on a real MacBook (800 Hz): taps peak at 2.1 to 3.0, ringing alone stays below 1.0.
+    private static let riseRatio = 1.5
+    private static let riseWindow = 0.04
+    private static let riseTail = 0.004
 
     private func currentThreshold(base: Double) -> Double {
         max(base, noiseFloor * 3.2 + 0.015)
@@ -389,9 +412,12 @@ public final class ImpactDetector {
         }
     }
 
-    private func updateAdaptiveThreshold(base: Double, signal: Double) -> Double {
+    /// The floor follows the signal with a time constant of about 0.33 s whatever the sample rate.
+    /// (A fixed per-sample step made it 8 times too fast at the 800 Hz of a real MacBook.)
+    private func updateAdaptiveThreshold(base: Double, signal: Double, elapsed: Double) -> Double {
         let capped = min(signal, max(base * 0.9, noiseFloor * 2.5))
-        noiseFloor = noiseFloor * 0.97 + capped * 0.03
+        let blend = 1 - pow(0.97, elapsed / 0.01)
+        noiseFloor += (capped - noiseFloor) * blend
         return max(base, noiseFloor * 3.2 + 0.015)
     }
 
@@ -405,58 +431,5 @@ public final class ImpactDetector {
             }
         }
         return total
-    }
-}
-
-/// Predicts the next sample from the last few, per axis, with a normalized LMS filter.
-///
-/// The ringing of a knocked chassis is a sum of fading sine waves, which a short linear
-/// predictor learns within a few milliseconds. A new knock is not predictable, so it shows
-/// up as a large prediction error even while the old ringing is still louder than the noise.
-struct RingPredictor {
-    static let order = 12
-    private static let step = 0.4
-    private static let regularization = 1e-4
-
-    private var weights = [[Double]](repeating: [Double](repeating: 0, count: order), count: 3)
-    private var history = [[Double]](repeating: [Double](repeating: 0, count: order), count: 3)
-
-    mutating func reset() {
-        for axis in 0..<3 {
-            for i in 0..<Self.order {
-                weights[axis][i] = 0
-                history[axis][i] = 0
-            }
-        }
-    }
-
-    /// Feeds the next high-pass sample and returns the size of the prediction error.
-    mutating func update(_ x: Vec3) -> Double {
-        let values = [x.x, x.y, x.z]
-        var errorSquared = 0.0
-        for axis in 0..<3 {
-            var predicted = 0.0
-            var energy = Self.regularization
-            for i in 0..<Self.order {
-                predicted += weights[axis][i] * history[axis][i]
-                energy += history[axis][i] * history[axis][i]
-            }
-            let error = values[axis] - predicted
-            errorSquared += error * error
-            let gain = Self.step * error / energy
-            for i in 0..<Self.order {
-                weights[axis][i] += gain * history[axis][i]
-            }
-            for i in stride(from: Self.order - 1, to: 0, by: -1) {
-                history[axis][i] = history[axis][i - 1]
-            }
-            history[axis][0] = values[axis]
-        }
-        let result = errorSquared.squareRoot()
-        if !result.isFinite {
-            reset()
-            return 0
-        }
-        return result
     }
 }

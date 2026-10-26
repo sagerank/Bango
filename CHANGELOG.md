@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.2
+
+Fixes from the first multi-tap recording on a real MacBook (800 Hz, 26 taps at about 0.21 s apart). Before: 1 of 26 taps found. After: 26 of 26, in a replay of that recording. **Still checked against one recording from one Mac, not yet confirmed live in the app.**
+
+- The ring-prediction filter from 0.9.1 is removed. On real data it scored follow-up taps at 0.02 to 0.03 against a gate of 0.04, so it rejected them. Real taps ring for only 0.1 to 0.2 s, much shorter than the simulation assumed
+- Every tap must now jump to at least 1.5 times the ringing level of the previous 40 ms. Measured: taps 2.1 to 3.0, ringing alone below 1.0. A smoothly building vibration scores about 1 and is ignored
+- The noise floor now follows the signal at a fixed speed per second. It used to step per sample, which at 800 Hz made it about 8 times too fast, so a tap raised its own threshold from 0.03 to 0.13 before it was accepted
+- The noise floor stays put while a just-accepted tap is still ringing
+- The "Mac was moving" lockout no longer counts the Mac's own tap ringing or the slow push of the arriving tap as motion. This locked out every gesture after the first
+- Wiggles in the ringing of a tap are no longer listed as ignored bumps
+- Tuning diagnostics show "rise" in place of "surprise"
+- The recording contains gyroscope data on every sample, so the gyroscope is readable on that Mac
+- 9 new tests (84 in total): the real recording as a fixture, replay at half the sample rate, and false-positive checks for steady vibration, lifting and carrying, setting down, typing on the table and long ringing
+
 ## 0.9.1
 
 Fixes found by running 0.9.0 on a real MacBook, where only single taps were recognised. **The fix is checked against simulated signals only, not yet against a real Mac.**

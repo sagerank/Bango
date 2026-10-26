@@ -16,7 +16,7 @@ Everything with logic and no system calls. It builds and tests on Linux, which i
 
 | File | Job |
 |---|---|
-| ImpactDetector | Finds single taps in a stream of accelerometer samples. Port of the nocnoc structure: low pass to remove gravity, high pass and jerk, adaptive threshold, motion lockout, quiet-before and brief-impulse gates. Holds each tap for a 60 ms feature window to capture its direction |
+| ImpactDetector | Finds single taps in a stream of accelerometer samples. Port of the nocnoc structure: low pass to remove gravity, high pass and jerk, adaptive threshold (time-based, frozen while a tap rings), motion lockout, quiet-before and brief-impulse gates, and a rise gate: a tap must jump to 1.5 times the ringing of the previous 40 ms, which is what separates follow-up taps from the tail of the one before. Holds each tap for a 60 ms feature window to capture its direction |
 | GestureRecognizer | Groups taps that follow within the grouping window. Second layer of the typing guard. Hard or soft from mean peak. Zone from a majority vote |
 | TapPipeline | Detector plus recognizer. `Replay` runs recorded samples through it deterministically |
 | Zones, Rhythm | Learned zone model (cosine similarity of 6 number direction vectors) and gap patterns |
