@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,4 +35,10 @@ jobs:
         with:
           name: TapDeck-unsigned
           path: dist/TapDeck-unsigned.zip
+          if-no-files-found: error
+      # Uploaded as a DMG so it keeps its layout. GitHub still wraps any artifact in a zip.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TapDeck-unsigned-dmg
+          path: dist/TapDeck-*-unsigned.dmg
           if-no-files-found: error
