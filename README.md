@@ -4,8 +4,8 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 
-> **Status: version 0.9.0, not yet run on a Mac.**
-> All the code is written and the gesture logic has 66 unit tests, but it was written on a machine
+> **Status: version 0.9.1, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.1 changes how follow-up taps are detected and has not yet been confirmed on a real Mac. If it still misses taps, see docs/VERIFY_ON_MAC.md.
+> All the code is written and the gesture logic has 75 unit tests, but it was written on a machine
 > without a Swift toolchain, so nothing has been compiled or tried on real hardware. Expect to fix
 > compile errors on the first build. Start with [docs/VERIFY_ON_MAC.md](docs/VERIFY_ON_MAC.md).
 > Please report what you find, see [Hardware reports](#hardware-reports).
@@ -14,7 +14,7 @@ Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 
 - **1 to 5 taps** mapped to actions, in profiles you switch from the menu bar (Work, Media and Meeting come built in)
 - **Typing guard**: taps are ignored while you type or click, because typing shakes the chassis. It reads only how long ago the last key or click happened, never which key
-- **36 actions**: copy, paste, cut, undo, redo, select all, play and pause, next and previous track, volume, mute, microphone mute, brightness, sleep display, dark mode, keep awake, lock screen, screen saver, three screenshot modes, open an app, open a link, Mission Control, show desktop, hide other apps, emoji picker, paste a saved snippet, Wi-Fi toggle, Bluetooth toggle, audio output switch, eject drives, run a Shortcut, run a Terminal command
+- **43 actions**: copy, paste, cut, undo, redo, select all, play and pause, next and previous track, volume, mute, microphone mute, brightness, sleep display, dark mode, keep awake, lock screen, screen saver, ten ways to take a screenshot (full screen or an area, saved to a file or copied to the clipboard, a window, or captured and marked up in Preview), open an app, open a link, Mission Control, show desktop, hide other apps, emoji picker, paste a saved snippet, Wi-Fi toggle, Bluetooth toggle, audio output switch, eject drives, run a Shortcut, run a Terminal command
 - **Action chains**: one gesture can run several actions, with pauses between them
 - **Per-app gestures**: a double tap can copy in one app and undo in another
 - **Soft and hard taps**: a soft double tap and a hard double tap can do different things (calibrated from your own taps)
@@ -52,11 +52,12 @@ Signed and notarized builds, and optional automatic updates, need your own Apple
 
 | Permission | Why | When it is asked |
 |---|---|---|
-| Accessibility | To press keys for you: copy, paste, media keys, screenshots, lock screen | First time such an action runs, or from General |
+| Accessibility | To press keys for you: copy, paste, media keys, lock screen | First time such an action runs, or from General |
+| Screen Recording | Only for the "Full screen", "Area" and "Window" capture actions that save, copy or mark up a picture | First time one of those runs. Quit and reopen TapDeck after allowing it |
 | Automation | Only for dark mode and ejecting drives | First time one of those runs |
 | Login Items | Only if you turn on Open at login | When you turn it on |
 
-TapDeck never asks for Input Monitoring, Microphone, Camera or Screen Recording.
+TapDeck asks for Screen Recording only if you use the capture actions. It never asks for Input Monitoring, Microphone or Camera.
 
 ## Privacy
 

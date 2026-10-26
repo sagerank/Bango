@@ -72,3 +72,70 @@ final class DetectorTests: XCTestCase {
         XCTAssertEqual(result.snapshot.sampleRate, 0)
     }
 }
+
+/// Real chassis keep ringing after a knock. Follow-up taps arrive on top of that ringing.
+final class RingingChassisTests: XCTestCase {
+    private func gestureCounts(
+        taps: Int, spacing: Double, decay: Double, frequencies: [Double] = [70]
+    ) -> [Int] {
+        let list = Synth.run(start: 1.5, count: taps, spacing: spacing, decay: decay, frequencies: frequencies)
+        let signal = Synth.signal(duration: 1.5 + Double(taps) * spacing + 1.5, taps: list)
+        return Replay.run(signal, config: PipelineConfig()).map { $0.taps }
+    }
+
+    func testEveryTapCountSurvivesLongRinging() {
+        for decay in [0.03, 0.06, 0.10, 0.16] {
+            for taps in 1...5 {
+                XCTAssertEqual(
+                    gestureCounts(taps: taps, spacing: 0.2, decay: decay), [taps],
+                    "\(taps) taps with ring decay \(decay) s"
+                )
+            }
+        }
+    }
+
+    func testFastTapsSurviveModerateRinging() {
+        for decay in [0.03, 0.06, 0.10] {
+            for taps in 2...5 {
+                XCTAssertEqual(
+                    gestureCounts(taps: taps, spacing: 0.15, decay: decay), [taps],
+                    "\(taps) fast taps with ring decay \(decay) s"
+                )
+            }
+        }
+    }
+
+    func testLowRingFrequencyStillSeparatesTaps() {
+        for taps in 2...5 {
+            XCTAssertEqual(gestureCounts(taps: taps, spacing: 0.2, decay: 0.012, frequencies: [35]), [taps])
+        }
+    }
+
+    func testOneLongRingingTapIsNotCountedTwice() {
+        for decay in [0.06, 0.10, 0.16] {
+            XCTAssertEqual(gestureCounts(taps: 1, spacing: 0.2, decay: decay), [1], "decay \(decay) s")
+        }
+    }
+
+    func testIgnoredBumpsAreCounted() {
+        // A tap during typing is rejected and the reason is recorded.
+        let signal = Synth.signal(duration: 3, taps: [SynthTap(time: 1.5)], inputEvents: [1.48])
+        let detector = ImpactDetector()
+        var last = DetectorSnapshot()
+        for sample in signal {
+            last = detector.process(sample, config: DetectorConfig()).snapshot
+        }
+        XCTAssertEqual(last.rejections.count(.typing), 1)
+        XCTAssertEqual(last.rejections.last, .typing)
+    }
+
+    func testAcceptedTapsAreNotCountedAsRejections() {
+        let signal = Synth.signal(duration: 3, taps: [SynthTap(time: 1.5)])
+        let detector = ImpactDetector()
+        var last = DetectorSnapshot()
+        for sample in signal {
+            last = detector.process(sample, config: DetectorConfig()).snapshot
+        }
+        XCTAssertEqual(last.rejections.total, 0)
+    }
+}

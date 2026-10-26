@@ -34,12 +34,14 @@ public enum ActionPermission: String, Codable, Sendable {
     case none
     case accessibility
     case automation
+    case screenRecording
 
     public var title: String {
         switch self {
         case .none: return "No permission"
         case .accessibility: return "Accessibility"
         case .automation: return "Automation"
+        case .screenRecording: return "Screen Recording"
         }
     }
 }
@@ -126,9 +128,16 @@ public enum ActionCatalog {
         ActionDefinition("screensaver", "Start screen saver", symbol: "moon.stars", category: .power),
 
         // Capture
-        ActionDefinition("screenshot-area", "Screenshot of an area", symbol: "viewfinder", category: .capture, permission: .accessibility),
-        ActionDefinition("screenshot-full", "Screenshot of the screen", symbol: "rectangle.dashed", category: .capture, permission: .accessibility),
+        ActionDefinition("screenshot-area", "Screenshot of an area (macOS shortcut)", symbol: "viewfinder", category: .capture, permission: .accessibility),
+        ActionDefinition("screenshot-full", "Screenshot of the screen (macOS shortcut)", symbol: "rectangle.dashed", category: .capture, permission: .accessibility),
         ActionDefinition("screenshot-toolbar", "Screenshot and recording toolbar", symbol: "camera.viewfinder", category: .capture, permission: .accessibility),
+        ActionDefinition("capture-full-save", "Full screen: save to file now", symbol: "rectangle.on.rectangle", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-full-clipboard", "Full screen: copy to clipboard", symbol: "doc.on.clipboard", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-area-save", "Area: pick and save to file", symbol: "viewfinder", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-area-clipboard", "Area: pick and copy to clipboard", symbol: "viewfinder.circle", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-window-save", "Window: pick and save to file", symbol: "macwindow.badge.plus", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-area-edit", "Area: pick, then mark up in Preview", symbol: "pencil.and.outline", category: .capture, permission: .screenRecording),
+        ActionDefinition("capture-full-edit", "Full screen: capture, then mark up in Preview", symbol: "pencil.tip.crop.circle", category: .capture, permission: .screenRecording),
 
         // Apps and windows
         ActionDefinition("launch-app", "Open an app", symbol: "app", category: .apps,

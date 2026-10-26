@@ -57,6 +57,14 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     /// Edit the active profile in place.
+    /// Adds the starter profiles that are missing (matched by name). Returns the names that were added.
+    @discardableResult
+    public mutating func addMissingStarterProfiles() -> [String] {
+        let missing = DefaultProfiles.missing(from: profiles)
+        profiles.append(contentsOf: missing)
+        return missing.map { $0.name }
+    }
+
     public mutating func updateActiveProfile(_ change: (inout Profile) -> Void) {
         guard let index = profiles.firstIndex(where: { $0.id == activeProfileID }) else { return }
         change(&profiles[index])

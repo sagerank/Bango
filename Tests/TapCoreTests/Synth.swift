@@ -33,6 +33,11 @@ struct SynthTap {
     var accelDir = Vec3(0.3, -0.2, 1)
     /// Direction of the gyroscope burst, when the test has gyro data.
     var gyroDir: Vec3? = nil
+    /// How long the chassis keeps ringing after the knock (seconds until the ring fades to 37%).
+    /// Real laptops ring longer than the 12 ms default, which is what makes fast taps hard to separate.
+    var decay: Double = 0.012
+    /// Ring frequencies in Hz. Several frequencies make the ringing beat, like a real chassis.
+    var frequencies: [Double] = [70]
 }
 
 enum Synth {
@@ -61,7 +66,12 @@ enum Synth {
             for tap in taps {
                 let d = t - tap.time
                 if d >= 0 {
-                    let burst = exp(-d / 0.012) * sin(2 * Double.pi * 70 * d)
+                    let share = 1.0 / Double(tap.frequencies.count)
+                    var burst = 0.0
+                    for (k, hz) in tap.frequencies.enumerated() {
+                        burst += share * exp(-d / tap.decay) * sin(2 * Double.pi * hz * d + Double(k))
+                    }
+                    if tap.frequencies.count == 1 { burst = exp(-d / tap.decay) * sin(2 * Double.pi * tap.frequencies[0] * d) }
                     a = a + tap.accelDir * (tap.amp * burst)
                     if let gd = tap.gyroDir {
                         g = g + gd * (tap.amp * 10 * burst)
@@ -83,7 +93,12 @@ enum Synth {
     }
 
     /// Evenly spaced taps.
-    static func run(start: Double, count: Int, spacing: Double, amp: Double = 0.12) -> [SynthTap] {
-        (0..<count).map { SynthTap(time: start + Double($0) * spacing, amp: amp) }
+    static func run(
+        start: Double, count: Int, spacing: Double, amp: Double = 0.12,
+        decay: Double = 0.012, frequencies: [Double] = [70]
+    ) -> [SynthTap] {
+        (0..<count).map {
+            SynthTap(time: start + Double($0) * spacing, amp: amp, decay: decay, frequencies: frequencies)
+        }
     }
 }

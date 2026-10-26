@@ -56,10 +56,30 @@ struct TuningView: View {
                 }
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(monitor.isSupported ? Theme.secondary : Theme.danger)
+                ignoredBumps
                 if monitor.snapshot.guarded {
                     Text("Typing guard active: taps are ignored while you type or click.")
                         .font(.caption).foregroundStyle(Theme.warning)
                 }
+            }
+        }
+    }
+
+    /// Shows why bumps that crossed the threshold were not counted as taps, so a missed tap can be explained.
+    @ViewBuilder
+    private var ignoredBumps: some View {
+        let rejections = monitor.snapshot.rejections
+        if rejections.total > 0 {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(rejections.last.map { "Last ignored bump: \($0.label)" } ?? "")
+                    .font(.caption).foregroundStyle(Theme.warning)
+                Text(
+                    Rejection.allCases
+                        .filter { rejections.count($0) > 0 }
+                        .map { "\($0.label): \(rejections.count($0))" }
+                        .joined(separator: "   ")
+                )
+                .font(.caption2.monospacedDigit()).foregroundStyle(Theme.secondary)
             }
         }
     }

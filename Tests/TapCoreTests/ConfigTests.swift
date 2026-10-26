@@ -20,6 +20,27 @@ final class ProfileTests: XCTestCase {
         }
     }
 
+    func testScreenshotsProfileMapsEveryTapCount() throws {
+        let profile = try XCTUnwrap(DefaultProfiles.make().first { $0.name == DefaultProfiles.screenshotsName })
+        XCTAssertEqual(profile.bindings.map { $0.taps }, [1, 2, 3, 4, 5])
+        let triple = try XCTUnwrap(profile.bindings.first { $0.taps == 3 })
+        XCTAssertEqual(triple.steps.first?.actionId, "capture-full-save")
+    }
+
+    func testMissingStarterProfilesAreAddedOnceByName() {
+        var config = AppConfig()
+        config.profiles.removeAll { $0.name == DefaultProfiles.screenshotsName }
+        XCTAssertEqual(config.addMissingStarterProfiles(), [DefaultProfiles.screenshotsName])
+        XCTAssertEqual(config.addMissingStarterProfiles(), [])
+        XCTAssertEqual(config.profiles.filter { $0.name == DefaultProfiles.screenshotsName }.count, 1)
+    }
+
+    func testCaptureActionsNeedScreenRecording() {
+        let capture = ActionCatalog.actions(in: .capture).filter { $0.id.hasPrefix("capture-") }
+        XCTAssertEqual(capture.count, 7)
+        for action in capture { XCTAssertEqual(action.permission, .screenRecording, action.id) }
+    }
+
     func testCatalogIDsAreUnique() {
         let ids = ActionCatalog.all.map { $0.id }
         XCTAssertEqual(ids.count, Set(ids).count)
@@ -221,7 +242,7 @@ final class ConfigTests: XCTestCase {
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
         XCTAssertTrue(config.hasCompletedOnboarding)
         XCTAssertEqual(config.detector, DetectorConfig())
-        XCTAssertEqual(config.profiles.count, 3)
+        XCTAssertEqual(config.profiles.count, 4)
         XCTAssertEqual(config.activeProfile.name, "Work")
     }
 

@@ -30,6 +30,8 @@ struct ProfilesView: View {
                     .buttonStyle(.pillPrimary)
                 Button { importProfile() } label: { Label("Import", systemImage: "square.and.arrow.down") }
                     .buttonStyle(.pill)
+                Button { addStarters() } label: { Label("Add starter profiles", systemImage: "sparkles") }
+                    .buttonStyle(.pill)
             }
 
             Notice(
@@ -105,6 +107,15 @@ struct ProfilesView: View {
             $0.activeProfileID = profile.id
         }
         message = nil
+    }
+
+    private func addStarters() {
+        var added: [String] = []
+        store.update { added = $0.addMissingStarterProfiles() }
+        let text = added.isEmpty
+            ? "You already have every starter profile."
+            : "Added: \(added.joined(separator: ", "))."
+        message = (style: .info, text: text)
     }
 
     private func duplicate(_ profile: Profile) {

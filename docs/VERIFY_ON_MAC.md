@@ -1,6 +1,6 @@
 # First run on a Mac
 
-Nothing in this repository has been compiled or run yet. This is the order to find out what is broken, cheapest checks first. Stop at the first failure and fix or report it before going on.
+The app has compiled and run on one Mac (single taps worked, multi-tap did not, which 0.9.1 targets). Not everything has been run yet. This is the order to find out what is broken, cheapest checks first. Stop at the first failure and fix or report it before going on.
 
 ## 1. Build and unit tests (about 5 minutes)
 
@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 66 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 75 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh
@@ -68,7 +68,9 @@ Turn off test mode in General first, and save your work. Then test each action o
 - [ ] sleep display, dark mode, screen saver
 - [ ] keep awake on and off (`pmset -g assertions` should list "TapDeck keep awake")
 - [ ] lock screen
-- [ ] screenshots: area, full, toolbar
+- [ ] screenshots, macOS shortcuts: area, full, toolbar
+- [ ] captures (need Screen Recording; quit and reopen TapDeck after allowing it): full screen saved, full screen copied, area saved, area copied, window saved, area and full screen with markup in Preview
+- [ ] Screenshots profile: 3 taps saves the full screen to your screenshot folder
 - [ ] open an app, open a link, Mission Control, show desktop, hide other apps
 - [ ] emoji picker, paste a snippet (your clipboard should come back afterwards)
 - [ ] Wi-Fi toggle (turn it back on!)

@@ -179,6 +179,28 @@ public struct Profile: Codable, Equatable, Identifiable, Sendable {
 }
 
 public enum DefaultProfiles {
+    /// Name of the profile that is built for taking screenshots.
+    public static let screenshotsName = "Screenshots"
+
+    private static func screenshots() -> Profile {
+        func bind(_ taps: Int, _ action: String) -> GestureBinding {
+            GestureBinding(key: GestureKey(taps: taps), steps: [ActionStep(actionId: action)])
+        }
+        return Profile(name: screenshotsName, bindings: [
+            bind(1, "capture-area-clipboard"),
+            bind(2, "capture-area-save"),
+            bind(3, "capture-full-save"),
+            bind(4, "capture-area-edit"),
+            bind(5, "screenshot-toolbar"),
+        ])
+    }
+
+    /// Starter profiles whose names are not in `existing`, for people who already have a saved setup.
+    public static func missing(from existing: [Profile]) -> [Profile] {
+        let names = Set(existing.map { $0.name.lowercased() })
+        return make().filter { !names.contains($0.name.lowercased()) }
+    }
+
     public static func make() -> [Profile] {
         func bind(_ taps: Int, _ action: String, _ parameter: String = "") -> GestureBinding {
             GestureBinding(
@@ -205,6 +227,7 @@ public enum DefaultProfiles {
                 bind(3, "screenshot-area"),
                 bind(4, "lock-screen"),
             ]),
+            screenshots(),
         ]
     }
 }

@@ -63,6 +63,13 @@ final class ActionExecutor: ObservableObject {
         case "screenshot-area": KeyPoster.press(KeyPoster.Code.four, flags: [.maskCommand, .maskShift])
         case "screenshot-full": KeyPoster.press(KeyPoster.Code.three, flags: [.maskCommand, .maskShift])
         case "screenshot-toolbar": KeyPoster.press(KeyPoster.Code.five, flags: [.maskCommand, .maskShift])
+        case "capture-full-save": return try await capture(.fullSave)
+        case "capture-full-clipboard": return try await capture(.fullClipboard)
+        case "capture-area-save": return try await capture(.areaSave)
+        case "capture-area-clipboard": return try await capture(.areaClipboard)
+        case "capture-window-save": return try await capture(.windowSave)
+        case "capture-area-edit": return try await capture(.areaEdit)
+        case "capture-full-edit": return try await capture(.fullEdit)
 
         // Apps and windows
         case "launch-app":
@@ -118,6 +125,16 @@ final class ActionExecutor: ObservableObject {
     // MARK: - Permissions and tools
 
     private func checkPermission(for definition: ActionDefinition) throws {
+        if definition.permission == .screenRecording {
+            guard ScreenCapture.hasPermission else {
+                if Date().timeIntervalSince(lastPermissionPrompt) > 60 {
+                    lastPermissionPrompt = Date()
+                    ScreenCapture.requestPermission()
+                }
+                throw ActionError("Allow TapDeck under Privacy & Security, Screen Recording, then quit and reopen TapDeck")
+            }
+            return
+        }
         guard definition.permission == .accessibility else { return }
         if AccessibilityPermission.isTrusted(promptIfNeeded: false) { return }
         // Ask at most once a minute so repeated taps do not spam the settings window.
@@ -139,6 +156,36 @@ final class ActionExecutor: ObservableObject {
             if FileManager.default.isExecutableFile(atPath: path) { return path }
         }
         throw ActionError("\(tool) is not installed. Install it with: \(hint)")
+    }
+
+    // MARK: - Screen capture
+
+    private func capture(_ mode: ScreenCapture.Mode) async throws -> String {
+        let outcome: ScreenCapture.Outcome
+        do {
+            outcome = try await ScreenCapture.perform(mode)
+        } catch {
+            throw ActionError(error.localizedDescription)
+        }
+        switch outcome {
+        case .cancelled:
+            return "Screenshot cancelled"
+        case .copied:
+            return "Screenshot copied"
+        case .saved(let url):
+            return "Saved \(url.lastPathComponent)"
+        case .editing(let url):
+            await openForMarkup(url)
+            return "Marking up \(url.lastPathComponent)"
+        }
+    }
+
+    /// Opens the picture in Preview and, when allowed, switches its markup toolbar on.
+    private func openForMarkup(_ url: URL) async {
+        _ = try? await ProcessRunner.run("/usr/bin/open", ["-a", "Preview", url.path], timeout: 10)
+        guard AccessibilityPermission.isTrusted(promptIfNeeded: false) else { return }
+        try? await Task.sleep(nanoseconds: 900_000_000)
+        KeyPoster.press(KeyPoster.Code.a, flags: [.maskCommand, .maskShift])
     }
 
     // MARK: - Helpers

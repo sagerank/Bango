@@ -1,6 +1,6 @@
 # TapDeck roadmap
 
-## Status (version 0.9.0)
+## Status (version 0.9.1)
 
 All milestones through v2 are written. **None of the app code has been compiled or run on a Mac yet.**
 It was written on a Linux machine with no Swift toolchain. What has been checked:
@@ -12,7 +12,7 @@ It was written on a Linux machine with no Swift toolchain. What has been checked
 | `swift test` (66 tests) and `swift build` | **Not run.** First thing to do on a Mac, see docs/VERIFY_ON_MAC.md |
 | Sensor reads, key posting, every action, zones, launch at login, notarization | **Not run** |
 
-Delivered against this plan: 4 and 5 taps, two-layer typing guard, 36 actions, profiles with per-app
+Delivered against this plan: 4 and 5 taps, two-layer typing guard, 43 actions, profiles with per-app
 overrides, action chains with delays, 24 hour test mode, practice and calibration, JSON import and
 export with code-running steps disabled, CSV record and replay, tap zones, soft and hard taps, rhythm
 patterns, launch at login, native key posting instead of osascript, own signing and update setup.

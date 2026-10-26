@@ -253,6 +253,7 @@ private struct StepRow: View {
         switch definition.permission {
         case .accessibility: out.append("Needs the Accessibility permission.")
         case .automation: out.append("Needs the Automation permission.")
+        case .screenRecording: out.append("Needs the Screen Recording permission. Pictures are saved to your screenshot folder.")
         case .none: break
         }
         if let tool = definition.tool { out.append("Needs \(tool), installed with Homebrew.") }
