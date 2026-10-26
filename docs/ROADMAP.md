@@ -1,6 +1,6 @@
 # TapDeck roadmap
 
-## Status (version 0.9.2)
+## Status (version 0.9.3)
 
 All milestones through v2 are written. **None of the app code has been compiled or run on a Mac yet.**
 It was written on a Linux machine with no Swift toolchain. What has been checked:

@@ -4,10 +4,15 @@ import Foundation
 import TapCore
 
 struct Feedback: Equatable {
+    /// Changes with every message, so the same message twice still replays its animation.
+    let id = UUID()
     var symbol: String
     var title: String
     var detail: String
     var isError = false
+    var kind: FeedbackKind = .generic
+    /// File of the screenshot just saved, for the preview.
+    var capturePath: String?
 }
 
 struct ActivityEntry: Identifiable, Equatable {
@@ -151,7 +156,13 @@ final class Engine: ObservableObject {
         }
         let summary = summaries.joined(separator: ", ")
         log(label, .ran(summary))
-        onFeedback?(Feedback(symbol: Describe.symbol(for: binding), title: label, detail: summary))
+        var kind = FeedbackKind.generic
+        if let last = steps.last, let lastSummary = summaries.last {
+            kind = FeedbackKind.classify(actionId: last.actionId, parameter: last.parameter, summary: lastSummary)
+        }
+        var feedback = Feedback(symbol: Describe.symbol(for: binding), title: label, detail: summary, kind: kind)
+        if case .screenshot = kind { feedback.capturePath = executor.lastCaptureURL?.path }
+        onFeedback?(feedback)
     }
 
     // MARK: - Log and icon

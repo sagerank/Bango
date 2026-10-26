@@ -14,7 +14,7 @@ struct OnboardingView: View {
     @State private var step = Step.hardware
     @State private var token = UUID()
     @State private var lastGesture: RecognizedGesture?
-    @State private var accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
+    @ObservedObject private var permissions = PermissionCenter.shared
     @State private var startInTestMode = true
 
     var body: some View {
@@ -33,7 +33,7 @@ struct OnboardingView: View {
             footer
         }
         .padding(28)
-        .frame(width: 540, height: 480)
+        .frame(width: 560, height: 640)
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .interactiveDismissDisabled()
@@ -63,28 +63,9 @@ struct OnboardingView: View {
                 }
             }
         case .permissions:
-            VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "One permission", subtitle: "To press keys on your behalf, macOS asks you to allow TapDeck under Accessibility.")
-                Card {
-                    HStack {
-                        Image(systemName: accessibilityTrusted ? "checkmark.circle.fill" : "circle.dashed")
-                            .foregroundStyle(accessibilityTrusted ? Theme.good : Theme.secondary)
-                        Text("Accessibility").foregroundStyle(Theme.text)
-                        Spacer()
-                        if !accessibilityTrusted {
-                            Button("Allow") {
-                                _ = AccessibilityPermission.requestIfNeeded()
-                            }
-                            .buttonStyle(.pillPrimary)
-                            Button("Check") {
-                                accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
-                            }
-                            .buttonStyle(.pill)
-                        }
-                    }
-                }
-                Text("You can skip this. Actions that only need the system, like keeping the Mac awake, work without it. TapDeck never records what you type.")
-                    .font(.callout).foregroundStyle(Theme.secondary)
+            VStack(alignment: .leading, spacing: 14) {
+                PageHeader(title: "Allow everything once", subtitle: "Press the button and TapDeck asks macOS for every permission its actions use, one after another. You can skip any of them.")
+                PermissionsPanel()
             }
         case .tryIt:
             VStack(alignment: .leading, spacing: 16) {
@@ -128,7 +109,7 @@ struct OnboardingView: View {
             if step == .safeStart {
                 Button("Finish") { finish() }.buttonStyle(.pillPrimary)
             } else {
-                Button(step == .permissions && !accessibilityTrusted ? "Skip" : "Continue") {
+                Button(step == .permissions && !permissions.allDone ? "Skip for now" : "Continue") {
                     step = Step(rawValue: step.rawValue + 1) ?? .safeStart
                 }
                 .buttonStyle(.pillPrimary)

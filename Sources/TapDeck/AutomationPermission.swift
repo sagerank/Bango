@@ -10,33 +10,34 @@ enum AutomationPermission {
         case unavailable
     }
 
-    private static let targetBundleIdentifier = "com.apple.systemevents"
+    static let systemEvents = "com.apple.systemevents"
+    static let finder = "com.apple.finder"
     private static let settingsURL = URL(
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
     )!
 
-    static func currentStatus() async -> Status {
-        await determineStatus(askUserIfNeeded: false)
+    static func currentStatus(for target: String = systemEvents) async -> Status {
+        await determineStatus(target: target, askUserIfNeeded: false)
     }
 
-    static func requestIfNeeded() async -> Status {
-        await determineStatus(askUserIfNeeded: true)
+    static func requestIfNeeded(for target: String = systemEvents) async -> Status {
+        await determineStatus(target: target, askUserIfNeeded: true)
     }
 
     static func openSystemSettings() {
         NSWorkspace.shared.open(settingsURL)
     }
 
-    private static func determineStatus(askUserIfNeeded: Bool) async -> Status {
+    private static func determineStatus(target targetBundleIdentifier: String, askUserIfNeeded: Bool) async -> Status {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(returning: determineStatusOnWorker(askUserIfNeeded: askUserIfNeeded))
+                continuation.resume(returning: determineStatusOnWorker(target: targetBundleIdentifier, askUserIfNeeded: askUserIfNeeded))
             }
         }
     }
 
-    private static func determineStatusOnWorker(askUserIfNeeded: Bool) -> Status {
-        guard ensureSystemEventsIsRunning() else { return .unavailable }
+    private static func determineStatusOnWorker(target targetBundleIdentifier: String, askUserIfNeeded: Bool) -> Status {
+        guard ensureIsRunning(targetBundleIdentifier) else { return .unavailable }
 
         var target = AEAddressDesc()
         let bundleIDData = Data(targetBundleIdentifier.utf8)
@@ -71,7 +72,7 @@ enum AutomationPermission {
         }
     }
 
-    private static func ensureSystemEventsIsRunning() -> Bool {
+    private static func ensureIsRunning(_ targetBundleIdentifier: String) -> Bool {
         if !NSRunningApplication.runningApplications(withBundleIdentifier: targetBundleIdentifier).isEmpty {
             return true
         }

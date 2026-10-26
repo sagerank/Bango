@@ -12,8 +12,6 @@ struct GeneralView: View {
 
     @State private var loginRefresh = 0
     @State private var loginError: String?
-    @State private var accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
-    @State private var automationStatus: AutomationPermission.Status?
     @State private var confirmReset = false
 
     var body: some View {
@@ -27,7 +25,6 @@ struct GeneralView: View {
             if updater.isAvailable { updatesCard }
             aboutCard
         }
-        .task { await refreshPermissions() }
         .confirmationDialog("Reset all settings?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset everything", role: .destructive) { store.resetEverything() }
             Button("Cancel", role: .cancel) {}
@@ -97,49 +94,9 @@ struct GeneralView: View {
     }
 
     private var permissionsCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionLabel(text: "Permissions")
-
-                permissionRow(
-                    title: "Accessibility",
-                    detail: "Needed to press keys for you: copy, paste, media keys, screenshots, lock screen.",
-                    granted: accessibilityTrusted,
-                    request: {
-                        _ = AccessibilityPermission.requestIfNeeded()
-                        Task { await refreshPermissions() }
-                    }
-                )
-
-                permissionRow(
-                    title: "Automation",
-                    detail: "Only needed for dark mode and ejecting drives. TapDeck asks the first time you use them.",
-                    granted: automationStatus == .granted,
-                    request: {
-                        Task {
-                            automationStatus = await AutomationPermission.requestIfNeeded()
-                            if automationStatus == .denied { AutomationPermission.openSystemSettings() }
-                        }
-                    }
-                )
-
-                Button("Check again") { Task { await refreshPermissions() } }.buttonStyle(.quiet)
-            }
-        }
-    }
-
-    private func permissionRow(title: String, detail: String, granted: Bool, request: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: granted ? "checkmark.circle.fill" : "circle.dashed")
-                .foregroundStyle(granted ? Theme.good : Theme.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).foregroundStyle(Theme.text)
-                Text(detail).font(.caption).foregroundStyle(Theme.secondary)
-            }
-            Spacer()
-            if !granted {
-                Button("Allow", action: request).buttonStyle(.pill)
-            }
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(text: "Permissions")
+            PermissionsPanel()
         }
     }
 
@@ -211,10 +168,5 @@ struct GeneralView: View {
             loginError = "Could not change the login item: \(error.localizedDescription)"
         }
         loginRefresh += 1
-    }
-
-    private func refreshPermissions() async {
-        accessibilityTrusted = AccessibilityPermission.isTrusted(promptIfNeeded: false)
-        automationStatus = await AutomationPermission.currentStatus()
     }
 }

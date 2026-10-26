@@ -13,6 +13,8 @@ struct ActionError: LocalizedError {
 @MainActor
 final class ActionExecutor: ObservableObject {
     @Published private(set) var caffeineActive = false
+    /// The file written by the latest screenshot action, or nil when it went to the clipboard or was cancelled.
+    private(set) var lastCaptureURL: URL?
 
     private var caffeineAssertion = IOPMAssertionID(0)
     private var lastInputVolume = 75
@@ -161,6 +163,7 @@ final class ActionExecutor: ObservableObject {
     // MARK: - Screen capture
 
     private func capture(_ mode: ScreenCapture.Mode) async throws -> String {
+        lastCaptureURL = nil
         let outcome: ScreenCapture.Outcome
         do {
             outcome = try await ScreenCapture.perform(mode)
@@ -173,8 +176,10 @@ final class ActionExecutor: ObservableObject {
         case .copied:
             return "Screenshot copied"
         case .saved(let url):
+            lastCaptureURL = url
             return "Saved \(url.lastPathComponent)"
         case .editing(let url):
+            lastCaptureURL = url
             await openForMarkup(url)
             return "Marking up \(url.lastPathComponent)"
         }

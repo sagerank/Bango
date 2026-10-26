@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 84 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 99 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh

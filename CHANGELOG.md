@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.3
+
+One-screen setup and animated feedback. **The new interface code is compiled by CI but has not been seen running on a Mac by the author. Treat the look and the permission flow as unverified until you have tried them.**
+
+- Setup asks for everything in one place: Accessibility, Automation for System Events (dark mode) and Finder (eject), Screen Recording, access to the screenshot folder, and open at login. One "Set up everything" button asks in the order that needs the fewest trips to System Settings, notices when each switch is flipped, and shows what each permission is used for
+- Each permission shows which of your gestures use it. Microphone mute needs no permission, because it only sets the input volume
+- Screen Recording shows "Restart TapDeck" once, since macOS applies it only after a restart
+- "Clear TapDeck's permissions" for the case where a new build looks allowed but is not. macOS ties each permission to the exact app, and an unsigned build counts as a new app every time it changes
+- The same panel is in General, replacing the old two-row list
+- Screenshots flash the screen like a shutter after the picture is taken, and the confirmation shows a thumbnail of the saved file
+- Microphone mute and unmute have their own animation (rings when live, a slash when muted)
+- Opening an app shows that app's own icon, so voice and dictation apps you launch by name show up clearly
+- Other actions get a springy icon. Animations stop when macOS Reduce Motion is on
+- 24 new tests (99 in total) for the permission plan and the animation choice
+
 ## 0.9.2
 
 Fixes from the first multi-tap recording on a real MacBook (800 Hz, 26 taps at about 0.21 s apart). Before: 1 of 26 taps found. After: 26 of 26, in a replay of that recording. **Still checked against one recording from one Mac, not yet confirmed live in the app.**
