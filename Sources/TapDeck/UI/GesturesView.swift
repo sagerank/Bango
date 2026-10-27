@@ -17,14 +17,26 @@ private struct EditTarget: Identifiable {
     var overrideID: String?
 }
 
+/// One sheet at a time. Two separate sheet modifiers on one view can leave a menu choice doing nothing.
+private enum ActiveSheet: Identifiable {
+    case edit(EditTarget)
+    case rhythm(RhythmTarget)
+
+    var id: UUID {
+        switch self {
+        case .edit(let target): return target.id
+        case .rhythm(let target): return target.id
+        }
+    }
+}
+
 struct GesturesView: View {
     @EnvironmentObject private var store: ConfigStore
     @EnvironmentObject private var monitor: MotionMonitor
     @EnvironmentObject private var engine: Engine
     let goToZones: () -> Void
 
-    @State private var target: EditTarget?
-    @State private var rhythmFor: RhythmTarget?
+    @State private var sheet: ActiveSheet?
 
     private var profile: Profile { store.config.activeProfile }
 
@@ -48,7 +60,7 @@ struct GesturesView: View {
                     }
                     ForEach(sorted(profile.bindings)) { binding in
                         BindingRow(binding: binding) {
-                            target = EditTarget(binding: binding, isNew: false, overrideID: nil)
+                            sheet = .edit(EditTarget(binding: binding, isNew: false, overrideID: nil))
                         }
                         if binding.id != sorted(profile.bindings).last?.id {
                             Divider().overlay(Theme.stroke).padding(.horizontal, 8)
@@ -56,37 +68,41 @@ struct GesturesView: View {
                     }
                 }
             }
-            addMenu(overrideID: nil)
+            addRow(overrideID: nil)
+
+            macrosSection
 
             overridesSection
         }
-        .sheet(item: $target) { item in
-            BindingEditor(
-                binding: item.binding,
-                isNew: item.isNew,
-                siblings: siblings(for: item.overrideID),
-                onSave: { save($0, overrideID: item.overrideID) },
-                onDelete: item.isNew ? nil : { delete(item.binding.id, overrideID: item.overrideID) }
-            )
-            .environmentObject(store)
-            .environmentObject(monitor)
-            .environmentObject(engine)
-        }
-        .sheet(item: $rhythmFor) { destination in
-            RhythmRecorderSheet { pattern in
-                // Opening the editor while the recorder is still closing makes macOS drop it, so wait a moment.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                    let binding = GestureBinding(
-                        key: GestureKey(taps: pattern.taps),
-                        rhythm: pattern,
-                        steps: [ActionStep(actionId: "none")]
-                    )
-                    target = EditTarget(binding: binding, isNew: true, overrideID: destination.overrideID)
+        .sheet(item: $sheet) { active in
+            switch active {
+            case .edit(let item):
+                BindingEditor(
+                    binding: item.binding,
+                    isNew: item.isNew,
+                    siblings: siblings(for: item.overrideID),
+                    onSave: { save($0, overrideID: item.overrideID) },
+                    onDelete: item.isNew ? nil : { delete(item.binding.id, overrideID: item.overrideID) }
+                )
+                .environmentObject(store)
+                .environmentObject(monitor)
+                .environmentObject(engine)
+            case .rhythm(let destination):
+                RhythmRecorderSheet { pattern in
+                    // Opening the editor while the recorder is still closing makes macOS drop it, so wait a moment.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        let binding = GestureBinding(
+                            key: GestureKey(taps: pattern.taps),
+                            rhythm: pattern,
+                            steps: [ActionStep(actionId: "none")]
+                        )
+                        sheet = .edit(EditTarget(binding: binding, isNew: true, overrideID: destination.overrideID))
+                    }
                 }
+                .environmentObject(store)
+                .environmentObject(monitor)
+                .environmentObject(engine)
             }
-            .environmentObject(store)
-            .environmentObject(monitor)
-            .environmentObject(engine)
         }
     }
 
@@ -112,11 +128,11 @@ struct GesturesView: View {
                         ForEach(sorted(appOverride.bindings)) { binding in
                             Divider().overlay(Theme.stroke).padding(.horizontal, 8)
                             BindingRow(binding: binding) {
-                                target = EditTarget(binding: binding, isNew: false, overrideID: appOverride.id)
+                                sheet = .edit(EditTarget(binding: binding, isNew: false, overrideID: appOverride.id))
                             }
                         }
                         Divider().overlay(Theme.stroke).padding(.horizontal, 8)
-                        addMenu(overrideID: appOverride.id).padding(8)
+                        addRow(overrideID: appOverride.id).padding(8)
                     }
                 }
             }
@@ -132,28 +148,96 @@ struct GesturesView: View {
 
     // MARK: Adding
 
-    private func addMenu(overrideID: String?) -> some View {
-        Menu {
-            ForEach(1...5, id: \.self) { count in
-                Button(Describe.taps(count)) {
-                    let binding = GestureBinding(key: GestureKey(taps: count), steps: [ActionStep(actionId: "none")])
-                    target = EditTarget(binding: binding, isNew: true, overrideID: overrideID)
+    /// Plain tap counts in a menu, and the two special kinds of gesture as buttons of their own,
+    /// so nothing important hides inside a submenu.
+    private func addRow(overrideID: String?) -> some View {
+        HStack(spacing: 10) {
+            Menu {
+                ForEach(1...5, id: \.self) { count in
+                    Button(Describe.taps(count)) {
+                        let binding = GestureBinding(key: GestureKey(taps: count), steps: [ActionStep(actionId: "none")])
+                        sheet = .edit(EditTarget(binding: binding, isNew: true, overrideID: overrideID))
+                    }
                 }
+            } label: {
+                Label("Add a gesture", systemImage: "plus")
             }
-            Divider()
-            Button("Tap rhythm…") { rhythmFor = RhythmTarget(overrideID: overrideID) }
-            Menu("Workflow from a template") {
-                ForEach(WorkflowTemplates.all) { template in
-                    Button(template.title) {
-                        target = EditTarget(binding: template.make(), isNew: true, overrideID: overrideID)
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            Button {
+                sheet = .rhythm(RhythmTarget(overrideID: overrideID))
+            } label: {
+                Label("Record a tap rhythm", systemImage: "waveform.path")
+            }
+            .buttonStyle(.pill)
+            .disabled(!monitor.isMonitoring)
+            .help(monitor.isMonitoring ? "Tap a pattern three times and give it its own action" : "Resume monitoring to record a rhythm")
+
+            if overrideID != nil {
+                Menu {
+                    ForEach(WorkflowTemplates.all) { template in
+                        Button(template.title) {
+                            sheet = .edit(EditTarget(binding: template.make(), isNew: true, overrideID: overrideID))
+                        }
+                    }
+                } label: {
+                    Label("Bango macro", systemImage: "wand.and.stars")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+        }
+    }
+
+    // MARK: Bango macros
+
+    private var macrosSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                SectionLabel(text: "Bango macros")
+                Text("Smart gestures")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(Theme.accent.opacity(0.18))
+                    .foregroundStyle(Theme.accent)
+                    .clipShape(Capsule())
+            }
+            Text("A Bango macro is a gesture that does different things depending on the situation: the time of day, the app in front, the battery, or whether the Mac just started. Start from a ready-made one and change it to yours.")
+                .font(.callout)
+                .foregroundStyle(Theme.secondary)
+
+            ForEach(WorkflowTemplates.all) { template in
+                Card(padding: 12) {
+                    HStack(alignment: .top, spacing: 12) {
+                        IconBadge(symbol: "wand.and.stars")
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(template.title).font(.callout.weight(.semibold)).foregroundStyle(Theme.text)
+                            Text(template.detail).font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Use this") {
+                            sheet = .edit(EditTarget(binding: template.make(), isNew: true, overrideID: nil))
+                        }
+                        .buttonStyle(.pill)
                     }
                 }
             }
-        } label: {
-            Label("Add a gesture", systemImage: "plus")
+
+            Button {
+                let blank = GestureBinding(
+                    key: GestureKey(taps: 2),
+                    steps: [ActionStep(actionId: "none")],
+                    workflow: Workflow(branches: [
+                        WorkflowBranch(conditions: [WorkflowCondition(kind: .justStarted)], steps: [ActionStep(actionId: "none")]),
+                    ])
+                )
+                sheet = .edit(EditTarget(binding: blank, isNew: true, overrideID: nil))
+            } label: {
+                Label("Build your own Bango macro", systemImage: "plus")
+            }
+            .buttonStyle(.pillPrimary)
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
     }
 
     private func chooseApp() {

@@ -78,18 +78,19 @@ public struct GestureBinding: Codable, Equatable, Identifiable, Sendable {
     public func score(for g: RecognizedGesture) -> Int? {
         var score = 0
         if let rhythm {
-            guard g.taps == rhythm.taps, rhythm.matches(g.gaps) else { return nil }
-            score = 100
+            guard g.taps == rhythm.taps, let deviation = rhythm.deviation(of: g.gaps), deviation <= 1 else { return nil }
+            // A rhythm beats a plain tap count. Between two rhythms, the closer one wins.
+            score = 1000 + Int((1 - deviation) * 99)
         } else {
             guard key.taps == g.taps else { return nil }
         }
         if key.zone != .any {
             guard g.zone == key.zone else { return nil }
-            score += 2
+            score += 200
         }
         if key.strength != .any {
             guard g.strength == key.strength else { return nil }
-            score += 1
+            score += 100
         }
         return score
     }
@@ -158,6 +159,20 @@ public struct Profile: Codable, Equatable, Identifiable, Sendable {
             return (match, nil)
         }
         return nil
+    }
+
+    /// When a rhythm gesture exists for this tap count but the performed gaps did not fit it, says by how much,
+    /// so a rhythm that falls back to the plain tap count can be understood. Nil when no rhythm was in play.
+    public func rhythmMissNote(for gesture: RecognizedGesture, frontmostBundleID: String?) -> String? {
+        var pool = bindings
+        if let bundleID = frontmostBundleID, let appOverride = appOverrides.first(where: { $0.id == bundleID }) {
+            pool = appOverride.bindings + pool
+        }
+        guard let rhythm = pool.compactMap({ $0.rhythm }).first(where: { $0.taps == gesture.taps }) else { return nil }
+        func format(_ values: [Double]) -> String {
+            values.map { String(format: "%.2f", $0) }.joined(separator: ", ")
+        }
+        return "rhythm not matched (you \(format(gesture.gaps)) s, recorded \(format(rhythm.gaps)) s)"
     }
 
     /// When a gesture matched nothing, says whether that is because a soft/hard or left/right/top gesture exists

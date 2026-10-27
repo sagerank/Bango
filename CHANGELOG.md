@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.1
+
+- Tap rhythms: matching now allows normal human timing. The same rhythm played a bit faster or slower still counts, and each gap may be off by half its length (at least 80 ms). What must stay the same is the pattern of short and long gaps. Before, a rhythm was missed unless every gap landed within about 35 percent, and a miss quietly ran the plain tap-count action instead.
+- When a rhythm is missed and the plain tap count runs, Activity now says so and shows your gaps next to the recorded ones.
+- When two rhythms both fit, the closer one wins.
+- Gestures page: "Record a tap rhythm" is its own button, no longer inside the Add a gesture menu, and it is greyed out with a reason when monitoring is paused. The page uses one sheet for the recorder and the editor, which fixes the menu choice that did nothing.
+- Bango macros (before: "Workflow from a template") have their own section on the Gestures page with a card for each ready-made macro and a "Build your own Bango macro" button. The if/else card in the gesture editor is now called Bango macro.
+- Bigger Bango name and tagline at the top of the sidebar.
+
 ## 0.14.0
 
 - New name: Bango (was TapDeck). The app, installer and window titles use it.

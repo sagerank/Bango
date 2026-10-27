@@ -10,6 +10,50 @@ final class RhythmTests: XCTestCase {
         XCTAssertFalse(pattern.matches([0.2]))
     }
 
+    func testSameRhythmPlayedABitFasterOrSlowerStillMatches() {
+        let pattern = RhythmPattern(gaps: [0.25, 0.25, 0.9])
+        XCTAssertTrue(pattern.matches([0.22, 0.21, 0.78]))
+        XCTAssertTrue(pattern.matches([0.30, 0.29, 1.05]))
+    }
+
+    func testSloppyButHumanRepeatMatches() {
+        // Gaps off by 60 ms and 150 ms from the recording.
+        let pattern = RhythmPattern(gaps: [0.25, 0.9])
+        XCTAssertTrue(pattern.matches([0.31, 0.75]))
+    }
+
+    func testDifferentPatternWithSameTapCountDoesNotMatch() {
+        let tapTapPauseTap = RhythmPattern(gaps: [0.2, 0.2, 0.9])
+        XCTAssertFalse(tapTapPauseTap.matches([0.9, 0.2, 0.2]))
+        XCTAssertFalse(tapTapPauseTap.matches([0.2, 0.9, 0.2]))
+        XCTAssertFalse(tapTapPauseTap.matches([0.4, 0.4, 0.4]))
+    }
+
+    func testMuchFasterOrSlowerPlayingDoesNotMatch() {
+        let pattern = RhythmPattern(gaps: [0.4, 0.4])
+        XCTAssertFalse(pattern.matches([0.15, 0.15]))
+        XCTAssertFalse(pattern.matches([0.9, 0.9]))
+    }
+
+    func testDeviationIsOneOrLessExactlyWhenItMatches() {
+        let pattern = RhythmPattern(gaps: [0.25, 0.9])
+        XCTAssertEqual(pattern.deviation(of: [0.25, 0.9]) ?? 9, 0, accuracy: 1e-9)
+        XCTAssertNil(pattern.deviation(of: [0.25]))
+        XCTAssertGreaterThan(pattern.deviation(of: [0.9, 0.25]) ?? 0, 1)
+    }
+
+    func testMissedRhythmIsExplainedWhenPlainGestureRuns() {
+        let rhythm = GestureBinding(key: GestureKey(taps: 3), rhythm: RhythmPattern(gaps: [0.2, 0.9]), steps: [ActionStep(actionId: "mute")])
+        let plain = GestureBinding(key: GestureKey(taps: 3), steps: [ActionStep(actionId: "copy")])
+        let profile = Profile(name: "p", bindings: [rhythm, plain])
+        let off = RecognizedGesture(taps: 3, gaps: [0.5, 0.2])
+        XCTAssertEqual(profile.resolution(for: off, frontmostBundleID: nil)?.binding.id, plain.id)
+        let note = profile.rhythmMissNote(for: off, frontmostBundleID: nil)
+        XCTAssertNotNil(note)
+        XCTAssertTrue(note?.contains("0.50, 0.20") ?? false)
+        XCTAssertNil(profile.rhythmMissNote(for: RecognizedGesture(taps: 2, gaps: [0.2]), frontmostBundleID: nil))
+    }
+
     func testLearnerAveragesConsistentRepeats() throws {
         let pattern = try RhythmLearner.learn(repeats: [[0.2, 0.8], [0.22, 0.78], [0.18, 0.82]])
         XCTAssertEqual(pattern.gaps[0], 0.2, accuracy: 0.01)

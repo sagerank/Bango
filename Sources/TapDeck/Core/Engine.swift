@@ -130,6 +130,12 @@ final class Engine: ObservableObject {
         let binding = resolved.binding
         // Say which app's own gesture decided, so a per-app setup can be checked in Activity.
         var label = resolved.appName.map { "\(baseLabel) in \($0)" } ?? baseLabel
+        // A rhythm that was performed slightly off falls back to the plain tap count. Say so.
+        if resolved.binding.rhythm == nil,
+           let note = config.activeProfile.rhythmMissNote(for: gesture, frontmostBundleID: frontmostBundleID)
+        {
+            label += " · \(note)"
+        }
         // With a workflow, the Mac's state at this moment picks the branch.
         let chosen = binding.resolvedSteps(in: SystemSnapshot.capture(frontmost: frontmostBundleID))
         if let number = chosen.branchNumber { label += " · if \(number)" }

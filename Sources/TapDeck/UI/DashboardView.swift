@@ -99,10 +99,17 @@ struct DashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 10) {
-                IconBadge(symbol: "hand.tap", size: 30)
-                Text("Bango").font(.headline).foregroundStyle(Theme.text)
+                IconBadge(symbol: "hand.tap", size: 38)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Bango")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.text)
+                    Text("Tap your Mac")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondary)
+                }
             }
-            .padding(.bottom, 18)
+            .padding(.bottom, 22)
 
             ForEach(DashboardSection.allCases) { section in
                 Button {
