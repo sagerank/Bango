@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Also publish a GitHub release (and its v-tag) for the version in the VERSION file'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -51,10 +56,10 @@ jobs:
           path: dist/Bango-*-unsigned.dmg
           if-no-files-found: error
 
-  # A pushed version tag such as v1.2.0 publishes a GitHub release with the DMG, once both jobs above pass.
+  # A pushed version tag such as v1.2.0, or a manual run with "release" ticked, publishes a GitHub release with the DMG once both jobs above pass.
   release:
     name: Publish release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
     needs: [core-tests, macos]
     runs-on: ubuntu-latest
     permissions:
@@ -71,7 +76,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
-          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+          TAG="v$VERSION"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$TAG" ]; then
             echo "Tag $GITHUB_REF_NAME does not match VERSION $VERSION" >&2
             exit 1
           fi
@@ -83,4 +89,4 @@ jobs:
             cat notes.md
           } > release.md
           ls dist
-          gh release create "$GITHUB_REF_NAME" dist/*.dmg --title "Bango $VERSION" --notes-file release.md
+          gh release create "$TAG" dist/*.dmg --target "$GITHUB_SHA" --title "Bango $VERSION" --notes-file release.md
