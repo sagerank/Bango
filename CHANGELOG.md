@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.3
+
+Dictation heard you and showed the words in the pill, but they did not arrive in the text box. **Compiled by CI, not yet seen on a Mac.**
+
+- The words are now pasted into the app in front instead of being sent as typed key presses. Typing worked in native apps but is ignored by many web-based and Electron apps, such as chat and AI apps. Pasting works wherever text can be pasted
+- How: the dictated text goes on the clipboard, Command V is pressed, and your own clipboard is put back (everything that was on it, not only text, and only if nothing else changed it in the meantime). Clipboard managers are told the dictated text is temporary
+- Without the Accessibility permission nothing can press keys, so the words stay on the clipboard and the message says so
+- The log and the toast say "Pasted 12 words"
+- Known limit: on newer macOS versions that ask before an app reads the clipboard, TapDeck may trigger that question when it saves your clipboard
+
 ## 0.12.2
 
 Screen Recording still looped on "Allowed. Restart TapDeck". **Compiled by CI, not yet seen on a Mac.**

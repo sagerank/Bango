@@ -137,7 +137,7 @@ final class DictationController: ObservableObject {
         teardown()
         session.finished()
         guard !text.isEmpty else { return "Nothing was heard" }
-        return TextTyper.insert(text)
+        return await TextTyper.insert(text)
     }
 
     private func resumeWaiter() {

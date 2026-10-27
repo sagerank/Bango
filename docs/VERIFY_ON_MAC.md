@@ -83,7 +83,7 @@ Turn off test mode in General first, and save your work. Then test each action o
 1. Setup: press Allow on Microphone and Speech Recognition (and Accessibility if it is not on).
 2. Gestures, Add starter profiles, then switch to the Voice profile and turn test mode off.
 3. Click into a text field (Notes, a browser box). Double tap: a "Listening" pill should appear.
-4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the sentence is typed into the field.
+4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the sentence is pasted into the field.
 5. Try: Accessibility off (words go to the clipboard), a double tap with Microphone off (a clear message), talking for more than 2 minutes (it stops by itself).
 
 ## 6c. Workflows

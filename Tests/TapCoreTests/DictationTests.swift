@@ -108,6 +108,6 @@ final class DictationPlanTests: XCTestCase {
 
     func testFeedbackFollowsTheResultSentence() {
         XCTAssertEqual(FeedbackKind.classify(actionId: "dictation-toggle", parameter: "", summary: "Listening… double tap again to finish"), .dictation(listening: true))
-        XCTAssertEqual(FeedbackKind.classify(actionId: "dictation-toggle", parameter: "", summary: "Typed 12 words"), .dictation(listening: false))
+        XCTAssertEqual(FeedbackKind.classify(actionId: "dictation-toggle", parameter: "", summary: "Pasted 12 words"), .dictation(listening: false))
     }
 }
