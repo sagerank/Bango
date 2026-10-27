@@ -10,8 +10,8 @@ Thank you. The most valuable contributions right now are, in order:
 ## Setup
 
 ```sh
-git clone https://github.com/your-name/TapDeck.git
-cd TapDeck
+git clone https://github.com/sagerank/Bango.git
+cd Bango
 swift test
 ./scripts/build.sh --unsigned
 ```

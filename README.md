@@ -4,7 +4,7 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. Bango was called TapDeck until 0.14.
 
-> **Status: version 1.0.0.** The tap detector was rewritten for this release and has been checked on one real MacBook recording and on simulated signals, but it has had little time on other Macs. New installs start in test mode (gestures are logged, nothing runs) until you switch it off in General. If it misses or invents taps, open Tuning and send a [hardware report](../../issues/new?template=hardware-report.yml) with the "ignored bumps" list. See docs/VERIFY_ON_MAC.md.
+> **Status: version 1.2.0, an early release.** Bango has been tested on a small number of MacBooks so far, and the tap detector was rewritten recently. New installs start in test mode (gestures are logged, nothing runs) until you switch it off in General. If it misses or invents taps, open Tuning and send a [hardware report](../../issues/new?template=hardware-report.yml) with the "ignored bumps" list. See docs/VERIFY_ON_MAC.md.
 
 ## What it does
 
@@ -14,7 +14,7 @@ Free, open source (MIT), no account, no telemetry. Bango was called TapDeck unti
 - **48 actions**: dictation, open several apps, open files and links, arrange windows, apply a saved layout,  copy, paste, cut, undo, redo, select all, play and pause, next and previous track, volume, mute, microphone mute, brightness, sleep display, dark mode, keep awake, lock screen, screen saver, ten ways to take a screenshot (full screen or an area, saved to a file or copied to the clipboard, a window, or captured and marked up in Preview), open an app, open a link, Mission Control, show desktop, hide other apps, emoji picker, paste a saved snippet, Wi-Fi toggle, Bluetooth toggle, audio output switch, eject drives, run a Shortcut, run a Terminal command
 - **Action chains**: one gesture can run several actions, with pauses between them
 - **Desk setup**: save where your windows are and put them back with one gesture, open several apps in order, snap the front window to a half or third of the screen
-- **If and else workflows**: a gesture can choose what runs from the time, the app in front, the battery, whether the Mac just started, and more. For example, two knocks soon after a restart open your apps, and at any other time do something else
+- **If and else macros**: a gesture can choose what runs from the time and day, the app in front, battery and Low Power Mode, Wi-Fi, Bluetooth devices, USB devices, the sound output, an external display, whether the Mac just started, and more. Conditions can be grouped with all or any, nested as deep as you like, and any single action can have its own "only if" that skips it, stops the chain or waits for it to become true. For example, two knocks soon after a restart open your apps, and at any other time do something else
 - **Per-app gestures**: a double tap can copy in one app and undo in another
 - **Soft and hard taps**: a soft double tap and a hard double tap can do different things (calibrated from your own taps)
 - **Tap rhythms**: record a pattern such as tap, tap, pause, tap
@@ -31,12 +31,16 @@ Free, open source (MIT), no account, no telemetry. Bango was called TapDeck unti
 - macOS 14 or newer
 - To build: Xcode 16 or newer (or the Swift 6 toolchain)
 
+## Download
+
+Get the latest DMG from the [Releases page](../../releases/latest), open it and drag Bango to Applications. The build is not notarized yet, so the first time, right-click Bango, choose Open, then Open again.
+
 ## Build and run
 
 ```sh
-git clone https://github.com/your-name/TapDeck.git
-cd TapDeck
-swift test                       # 66 tests, no Mac sensor needed
+git clone https://github.com/sagerank/Bango.git
+cd Bango
+swift test                       # 200+ tests, no Mac sensor needed
 ./scripts/build.sh --unsigned    # creates dist/Bango.app and an installer DMG, signed for this Mac only
 open dist/Bango.app
 ```
@@ -65,7 +69,7 @@ Everything stays on your Mac. Dictation uses on-device recognition and refuses t
 
 ## Hardware reports
 
-Sensor access differs between Mac models and macOS versions, and I could not test any of them. If you try Bango, a [hardware report](../../issues/new?template=hardware-report.yml) with your model, what General shows under "This Mac", and how tapping behaves is the most useful thing you can send. Results go into [docs/HARDWARE.md](docs/HARDWARE.md).
+Sensor access differs between Mac models and macOS versions, and Bango has been tried on only a few of them. If you try Bango, a [hardware report](../../issues/new?template=hardware-report.yml) with your model, what General shows under "This Mac", and how tapping behaves is the most useful thing you can send. Results go into [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Known limits
 

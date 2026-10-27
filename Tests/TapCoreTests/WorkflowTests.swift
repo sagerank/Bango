@@ -69,7 +69,7 @@ final class WorkflowConditionTests: XCTestCase {
     }
 
     func testBluetoothDevicesMatchPartOfTheNameAndNeedBluetoothOn() {
-        let c = SystemContext(bluetoothOn: true, bluetoothDevices: ["Veer's AirPods Pro", "Magic Keyboard"])
+        let c = SystemContext(bluetoothOn: true, bluetoothDevices: ["Alex's AirPods Pro", "Magic Keyboard"])
         XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, value: "airpods").isMet(in: c), "capitals do not matter")
         XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, value: "").isMet(in: c), "no name means any device")
         XCTAssertFalse(WorkflowCondition(kind: .bluetoothDevice, value: "Mouse").isMet(in: c))

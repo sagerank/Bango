@@ -17,7 +17,7 @@ if [ "$#" -ne 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 ARCHIVE="$1"
-: "${TAPDECK_REPO:?Set TAPDECK_REPO, for example your-name/TapDeck}"
+: "${TAPDECK_REPO:?Set TAPDECK_REPO, for example sagerank/Bango}"
 ACCOUNT="${TAPDECK_SPARKLE_ACCOUNT:-tapdeck}"
 SPARKLE_BIN=".build/artifacts/sparkle/Sparkle/bin"
 RELEASE_BASE_URL="https://github.com/$TAPDECK_REPO/releases"

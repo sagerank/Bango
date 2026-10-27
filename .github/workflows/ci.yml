@@ -50,3 +50,37 @@ jobs:
           name: Bango-${{ steps.meta.outputs.name }}-DMG
           path: dist/Bango-*-unsigned.dmg
           if-no-files-found: error
+
+  # A pushed version tag such as v1.2.0 publishes a GitHub release with the DMG, once both jobs above pass.
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [core-tests, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Bango-*-DMG
+          path: dist
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match VERSION $VERSION" >&2
+            exit 1
+          fi
+          awk -v v="$VERSION" '$0 == "## " v { found = 1; next } found && /^## / { exit } found { print }' CHANGELOG.md > notes.md
+          {
+            echo "Download the DMG below, open it and drag Bango to Applications."
+            echo "This build is not notarized yet: the first time, right-click Bango, choose Open, then Open again."
+            echo
+            cat notes.md
+          } > release.md
+          ls dist
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg --title "Bango $VERSION" --notes-file release.md
