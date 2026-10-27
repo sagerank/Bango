@@ -12,10 +12,18 @@ struct SetupView: View {
     @State private var showPractice = false
     @State private var typingTest: String?
     @State private var showWizard = false
+    @MainActor private static var wizardOfferedThisLaunch = false
 
     var body: some View {
         content
-            .onAppear { center.markSetupSeen() }
+            .onAppear {
+                center.markSetupSeen()
+                // Guided setup opens by itself, once per launch, when Accessibility or Screen Recording is still off.
+                if center.needsAttention, !Self.wizardOfferedThisLaunch {
+                    Self.wizardOfferedThisLaunch = true
+                    showWizard = true
+                }
+            }
             .sheet(isPresented: $showWizard) {
                 VStack(spacing: 0) {
                     PermissionWizard(onFinish: { showWizard = false }).padding(28)

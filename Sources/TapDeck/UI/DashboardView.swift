@@ -58,6 +58,7 @@ struct DashboardView: View {
         }
         .frame(minWidth: 860, minHeight: 720)
         .background(Theme.background)
+        .focusEffectDisabled()
         .preferredColorScheme(.dark)
         .tint(Theme.accent)
         .background(

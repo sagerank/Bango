@@ -8,13 +8,14 @@ struct PermissionWizard: View {
     let onFinish: () -> Void
 
     private enum Page: Int, CaseIterable {
-        case accessibility, screenRecording, dictation, loginItem, done
+        case accessibility, screenRecording, dictation, automation, loginItem, done
 
         var items: [SetupItem] {
             switch self {
             case .accessibility: return [.accessibility]
-            case .screenRecording: return [.screenRecording]
+            case .screenRecording: return [.screenshotFolder, .screenRecording]
             case .dictation: return [.microphone, .speechRecognition]
+            case .automation: return [.systemEvents, .finder]
             case .loginItem: return [.loginItem]
             case .done: return []
             }
@@ -25,6 +26,7 @@ struct PermissionWizard: View {
             case .accessibility: return "hand.tap.fill"
             case .screenRecording: return "camera.viewfinder"
             case .dictation: return "mic.fill"
+            case .automation: return "gearshape.2.fill"
             case .loginItem: return "power.circle.fill"
             case .done: return "checkmark.seal.fill"
             }
@@ -35,6 +37,7 @@ struct PermissionWizard: View {
             case .accessibility: return "Let Bango press keys for you"
             case .screenRecording: return "Let Bango take screenshots"
             case .dictation: return "Let Bango hear you"
+            case .automation: return "Dark mode and ejecting drives"
             case .loginItem: return "Start Bango with your Mac"
             case .done: return "You are all set"
             }
@@ -45,9 +48,11 @@ struct PermissionWizard: View {
             case .accessibility:
                 return "This is what turns a tap into copy, paste, volume, media keys, lock screen and more. Without it most actions cannot run."
             case .screenRecording:
-                return "Needed only for the screenshot actions. macOS applies it after Bango restarts once, and Bango will offer that for you."
+                return "Needed for the screenshot actions, and for saving them to your screenshot folder. macOS applies Screen Recording after Bango restarts once, and Bango will offer that for you."
             case .dictation:
                 return "Double tap, talk, and the words are typed for you. The microphone is on only between the two double taps, and speech is recognised on this Mac."
+            case .automation:
+                return "Lets Bango switch dark mode (System Events) and eject drives (Finder). macOS asks once for each. Optional: skip it if you will not use those actions."
             case .loginItem:
                 return "So your taps keep working after a restart, without opening Bango yourself."
             case .done:
@@ -60,6 +65,7 @@ struct PermissionWizard: View {
             case .accessibility: return "Allow Accessibility"
             case .screenRecording: return "Allow Screen Recording"
             case .dictation: return "Allow Microphone and Speech"
+            case .automation: return "Allow Automation"
             case .loginItem: return "Open at login"
             case .done: return "Finish"
             }
@@ -73,6 +79,8 @@ struct PermissionWizard: View {
                 return "System Settings opens next. Switch Bango on in the list."
             case .dictation:
                 return "macOS asks twice, once for the microphone and once for speech."
+            case .automation:
+                return "macOS asks once for System Events and once for Finder."
             case .loginItem:
                 return nil
             case .done:
@@ -86,7 +94,7 @@ struct PermissionWizard: View {
     @State private var waitingSince: Date?
     @State private var positioned = false
 
-    private let steps: [Page] = [.accessibility, .screenRecording, .dictation, .loginItem]
+    private let steps: [Page] = [.accessibility, .screenRecording, .dictation, .automation, .loginItem]
 
     var body: some View {
         VStack(spacing: 22) {
@@ -105,9 +113,14 @@ struct PermissionWizard: View {
                 positioned = true
                 page = firstUnfinished()
             }
+            await center.refreshAutomationQuietly()
+            var ticks = 0
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 700_000_000)
                 center.refreshQuick()
+                ticks += 1
+                // Same quiet check the Setup list does, so the wizard and the list never disagree.
+                if ticks % 4 == 0 { await center.refreshAutomationQuietly() }
                 await advanceIfDone()
             }
         }
@@ -121,7 +134,7 @@ struct PermissionWizard: View {
                 ForEach(steps, id: \.rawValue) { step in
                     Capsule()
                         .fill(color(for: step))
-                        .frame(width: 34, height: 4)
+                        .frame(width: 28, height: 4)
                 }
             }
             if page != .done {
@@ -257,9 +270,11 @@ struct PermissionWizard: View {
             return center.state(.accessibility) == .granted
         case .screenRecording:
             let state = center.state(.screenRecording)
-            return state == .granted || state == .needsRestart
+            return (state == .granted || state == .needsRestart) && center.state(.screenshotFolder) == .granted
         case .dictation:
             return center.state(.microphone) == .granted && center.state(.speechRecognition) == .granted
+        case .automation:
+            return [.systemEvents, .finder].allSatisfy { [.granted, .unavailable].contains(center.state($0)) }
         case .loginItem:
             let state = center.state(.loginItem)
             return state == .granted || state == .unavailable
