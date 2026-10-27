@@ -77,6 +77,7 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         case justStarted, timeBetween, weekday, frontApp, appRunning
         case onBattery, batteryBelow, lowPowerMode, externalDisplay
         case wifiOn, wifiConnected, bluetoothOn, bluetoothDevice, usbDevice, audioOutput
+        case group
 
         public var title: String {
             switch self {
@@ -95,6 +96,7 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
             case .bluetoothDevice: return "A Bluetooth device"
             case .usbDevice: return "A USB device or peripheral"
             case .audioOutput: return "The sound output"
+            case .group: return "A group: all or any of several"
             }
         }
 
@@ -119,10 +121,14 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
     public var number: Double
     /// Calendar weekdays (1 Sunday to 7 Saturday).
     public var days: [Int]
+    /// The conditions inside a group, and whether all or any of them must hold.
+    public var children: [WorkflowCondition]
+    public var match: WorkflowBranch.Match
 
     public init(
         id: String = IDs.new(), kind: Kind, negate: Bool = false, value: String = "", label: String = "",
-        from: Int = 9 * 60, to: Int = 17 * 60, number: Double = 30, days: [Int] = [2, 3, 4, 5, 6]
+        from: Int = 9 * 60, to: Int = 17 * 60, number: Double = 30, days: [Int] = [2, 3, 4, 5, 6],
+        children: [WorkflowCondition] = [], match: WorkflowBranch.Match = .all
     ) {
         self.id = id
         self.kind = kind
@@ -133,9 +139,11 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         self.to = to
         self.number = number
         self.days = days
+        self.children = children
+        self.match = match
     }
 
-    enum CodingKeys: String, CodingKey { case id, kind, negate, value, label, from, to, number, days }
+    enum CodingKeys: String, CodingKey { case id, kind, negate, value, label, from, to, number, days, children, match }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -149,6 +157,15 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         to = c.lenient(.to, d.to)
         number = c.lenient(.number, d.number)
         days = c.lenient(.days, d.days)
+        children = c.lenient(.children, [WorkflowCondition]())
+        match = c.lenient(.match, WorkflowBranch.Match.all)
+    }
+
+    /// Every kind used here, including inside groups. Tells the app which facts to read before deciding.
+    public var kinds: Set<Kind> {
+        var all: Set<Kind> = [kind]
+        for child in children { all.formUnion(child.kinds) }
+        return all
     }
 
     /// Whether the condition holds. Anything that cannot be known (no battery, boot time unreadable) counts as
@@ -188,6 +205,9 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
             result = Self.matches(context.usbDevices, value)
         case .audioOutput:
             result = value.trimmingCharacters(in: .whitespaces).isEmpty ? nil : context.audioOutput.map { Self.matches([$0], value) }
+        case .group:
+            // An empty group is not a decision. Anything else is decided by its own all or any.
+            result = children.isEmpty ? nil : Self.holds(children, match, in: context)
         }
         guard let result else { return false }
         return negate ? !result : result
@@ -226,6 +246,19 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         case .audioOutput:
             let device = deviceName.isEmpty ? "the chosen device" : deviceName
             return negate ? "the sound is not going to \(device)" : "the sound is going to \(device)"
+        case .group:
+            guard !children.isEmpty else { return negate ? "not (an empty group)" : "an empty group" }
+            let inner = children.map { $0.summary }.joined(separator: match == .all ? " and " : " or ")
+            return negate ? "not (\(inner))" : "(\(inner))"
+        }
+    }
+
+    /// All or any of these conditions hold. Nothing to check counts as holding.
+    static func holds(_ conditions: [WorkflowCondition], _ match: WorkflowBranch.Match, in context: SystemContext) -> Bool {
+        guard !conditions.isEmpty else { return true }
+        switch match {
+        case .all: return conditions.allSatisfy { $0.isMet(in: context) }
+        case .any: return conditions.contains { $0.isMet(in: context) }
         }
     }
 
@@ -248,6 +281,9 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         case .frontApp, .appRunning: return value.isEmpty ? "Choose an app" : nil
         case .weekday: return days.isEmpty ? "Choose at least one day" : nil
         case .audioOutput: return deviceName.isEmpty ? "Type part of the output device's name" : nil
+        case .group:
+            if children.isEmpty { return "Add at least one condition to the group" }
+            return children.compactMap { $0.problem }.first
         default: return nil
         }
     }
@@ -284,11 +320,12 @@ public struct WorkflowBranch: Codable, Equatable, Identifiable, Sendable {
 
     /// A branch with no conditions is always met.
     public func isMet(in context: SystemContext) -> Bool {
-        guard !conditions.isEmpty else { return true }
-        switch match {
-        case .all: return conditions.allSatisfy { $0.isMet(in: context) }
-        case .any: return conditions.contains { $0.isMet(in: context) }
-        }
+        WorkflowCondition.holds(conditions, match, in: context)
+    }
+
+    /// Every kind of fact this branch looks at.
+    public var kinds: Set<WorkflowCondition.Kind> {
+        conditions.reduce(into: Set<WorkflowCondition.Kind>()) { $0.formUnion($1.kinds) }
     }
 
     public var summary: String {
@@ -321,6 +358,11 @@ public struct Workflow: Codable, Equatable, Sendable {
         return nil
     }
 
+    /// Every kind of fact the branches look at, so the app reads only those.
+    public var kinds: Set<WorkflowCondition.Kind> {
+        branches.reduce(into: Set<WorkflowCondition.Kind>()) { $0.formUnion($1.kinds) }
+    }
+
     /// Things to fix before this workflow can behave as intended.
     public var problems: [String] {
         var out: [String] = []
@@ -330,8 +372,81 @@ public struct Workflow: Codable, Equatable, Sendable {
             for condition in branch.conditions {
                 if let problem = condition.problem { out.append("Branch \(number): \(problem)") }
             }
+            for step in branch.steps {
+                if let problem = step.guardIf?.problem { out.append("Branch \(number), \(ActionCatalog.definition(for: step.actionId)?.name ?? "an action"): \(problem)") }
+            }
         }
         return out
+    }
+}
+
+/// "Only if": a test on a single action in a chain, checked at the moment that action is about to run.
+public struct StepGuard: Codable, Equatable, Hashable, Sendable {
+    /// What happens when the test fails.
+    public enum Otherwise: String, Codable, CaseIterable, Sendable {
+        /// Leave this action out and carry on with the next.
+        case skip
+        /// End the whole chain here.
+        case stop
+        /// Keep checking for a while. Run the action when the test passes, end the chain if it never does.
+        case wait
+
+        public var title: String {
+            switch self {
+            case .skip: return "Skip this action"
+            case .stop: return "Stop the whole chain"
+            case .wait: return "Wait for it, up to"
+            }
+        }
+    }
+
+    /// The longest a "wait" may last, whatever is saved.
+    public static let longestWait = 60.0
+
+    public var conditions: [WorkflowCondition]
+    public var match: WorkflowBranch.Match
+    public var otherwise: Otherwise
+    public var waitSeconds: Double
+
+    public init(
+        conditions: [WorkflowCondition] = [], match: WorkflowBranch.Match = .all,
+        otherwise: Otherwise = .skip, waitSeconds: Double = 10
+    ) {
+        self.conditions = conditions
+        self.match = match
+        self.otherwise = otherwise
+        self.waitSeconds = waitSeconds
+    }
+
+    enum CodingKeys: String, CodingKey { case conditions, match, otherwise, waitSeconds }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        conditions = c.lenient(.conditions, [WorkflowCondition]())
+        match = c.lenient(.match, WorkflowBranch.Match.all)
+        otherwise = c.lenient(.otherwise, Otherwise.skip)
+        waitSeconds = c.lenient(.waitSeconds, 10.0)
+    }
+
+    /// No conditions means the action always runs.
+    public func isMet(in context: SystemContext) -> Bool {
+        WorkflowCondition.holds(conditions, match, in: context)
+    }
+
+    /// The seconds a wait may last, kept in range.
+    public var waitLimit: Double { min(max(waitSeconds, 1), Self.longestWait) }
+
+    public var kinds: Set<WorkflowCondition.Kind> {
+        conditions.reduce(into: Set<WorkflowCondition.Kind>()) { $0.formUnion($1.kinds) }
+    }
+
+    public var summary: String {
+        guard !conditions.isEmpty else { return "always" }
+        return conditions.map { $0.summary }.joined(separator: match == .all ? " and " : " or ")
+    }
+
+    public var problem: String? {
+        conditions.compactMap { $0.problem }.first
     }
 }
 

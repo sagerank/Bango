@@ -137,7 +137,7 @@ final class Engine: ObservableObject {
             label += " · \(note)"
         }
         // With a workflow, the Mac's state at this moment picks the branch.
-        let needed = Set(binding.workflow?.branches.flatMap { $0.conditions.map { $0.kind } } ?? [])
+        let needed = binding.workflow?.kinds ?? []
         let chosen = binding.resolvedSteps(in: SystemSnapshot.capture(frontmost: frontmostBundleID, needing: needed))
         if let number = chosen.branchNumber { label += " · if \(number)" }
         let enabledSteps = chosen.steps.filter { $0.enabled }
@@ -173,6 +173,25 @@ final class Engine: ObservableObject {
         defer { chainRunning = false }
         var summaries: [String] = []
         for step in steps {
+            // "Only if" is tested now, at the moment this action is due, so it sees what earlier actions changed.
+            if let gate = step.guardIf, !gate.conditions.isEmpty {
+                switch await decide(gate) {
+                case .go:
+                    break
+                case .skip:
+                    summaries.append("skipped \(Describe.actionName(step.actionId)) (needs \(gate.summary))")
+                    continue
+                case .stop:
+                    let reason = "stopped before \(Describe.actionName(step.actionId)): \(gate.summary) was not true"
+                    if summaries.isEmpty {
+                        log(label, .blocked(reason.prefix(1).uppercased() + reason.dropFirst()))
+                    } else {
+                        log(label, .ran(summaries.joined(separator: ", ") + ", then " + reason))
+                    }
+                    onFeedback?(Feedback(symbol: "hand.raised", title: label, detail: reason, isError: false))
+                    return
+                }
+            }
             do {
                 summaries.append(try await executor.perform(step))
             } catch {
@@ -195,6 +214,28 @@ final class Engine: ObservableObject {
         var feedback = Feedback(symbol: symbol, title: label, detail: summary, kind: kind)
         if case .screenshot = kind { feedback.capturePath = executor.lastCaptureURL?.path }
         onFeedback?(feedback)
+    }
+
+    private enum GateResult { case go, skip, stop }
+
+    /// Tests an action's "only if" now. When it fails: skip the action, stop the chain, or keep checking for a while.
+    private func decide(_ gate: StepGuard) async -> GateResult {
+        func holds() -> Bool {
+            let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            return gate.isMet(in: SystemSnapshot.capture(frontmost: front, needing: gate.kinds))
+        }
+        if holds() { return .go }
+        switch gate.otherwise {
+        case .skip: return .skip
+        case .stop: return .stop
+        case .wait:
+            let end = Date().addingTimeInterval(gate.waitLimit)
+            while Date() < end {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if holds() { return .go }
+            }
+            return .stop
+        }
     }
 
     // MARK: - Log and icon

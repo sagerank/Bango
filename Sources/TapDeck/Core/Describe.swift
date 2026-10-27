@@ -39,7 +39,9 @@ enum Describe {
     static func chain(_ steps: [ActionStep]) -> String {
         let names = steps.filter { $0.enabled }.map { step -> String in
             let base = actionName(step.actionId)
-            return step.parameter.isEmpty ? base : "\(base) (\(step.parameter))"
+            var text = step.parameter.isEmpty ? base : "\(base) (\(step.parameter))"
+            if let gate = step.guardIf, !gate.conditions.isEmpty { text += " (only if \(gate.summary))" }
+            return text
         }
         return names.isEmpty ? "Nothing" : names.joined(separator: ", then ")
     }

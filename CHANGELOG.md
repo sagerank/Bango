@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0
+
+"God mode" for Bango macros.
+
+- **Only if, on any single action.** Under every action there is now "Only run this action if…". It is tested at the moment that action is due, so it sees what earlier actions changed. If it is not true you choose: skip this action, stop the whole chain, or wait up to N seconds (1 to 60) for it to become true and stop if it never does. Example: turn Bluetooth on, wait up to 15 s for the AirPods, then play.
+- **Groups.** A new condition, "A group: all or any of several", holds its own conditions with its own all or any, and groups can sit inside groups. That makes combinations like (night and AirPods connected) or battery below 20%, or "not (…)", possible.
+- The final rule is now labelled **ELSE** in the editor. A macro is IF, as many ELSE IF as you like, then ELSE.
+- Activity, test mode and "Check against right now" say when an action was skipped or the chain stopped, and why.
+- Older saved gestures load unchanged. 209 tests. Not yet seen on a Mac.
+
 ## 1.1.0
 
 - **Many more conditions** for Bango macros (the if and else rules): Wi-Fi on or off, Wi-Fi connected, Bluetooth on or off, a named Bluetooth device connected (AirPods, a keyboard), a named USB device or peripheral plugged in (a dock, a mouse), where the sound is going (headphones, speakers, a display), and Low Power Mode. They sit with the existing time, day, app, battery, display and "just started" conditions.

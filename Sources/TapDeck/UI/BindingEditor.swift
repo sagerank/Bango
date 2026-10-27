@@ -135,7 +135,7 @@ struct BindingEditor: View {
     private var stepsCard: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
-                SectionLabel(text: draft.workflow == nil ? "Do" : "Otherwise, when no condition above is met")
+                SectionLabel(text: draft.workflow == nil ? "Do" : "ELSE: when no condition above is met")
                 StepsEditor(steps: $draft.steps)
             }
         }
@@ -265,6 +265,8 @@ private struct StepRow: View {
                         .foregroundStyle(Theme.secondary)
                 }
             }
+
+            GuardEditor(guardIf: $step.guardIf)
 
             ForEach(hints, id: \.self) { hint in
                 Text(hint).font(.caption).foregroundStyle(Theme.secondary)

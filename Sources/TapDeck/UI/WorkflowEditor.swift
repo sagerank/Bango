@@ -125,19 +125,7 @@ private struct BranchEditor: View {
                 Button(role: .destructive, action: remove) { Image(systemName: "trash") }.buttonStyle(.quiet)
             }
 
-            ForEach($branch.conditions) { $condition in
-                ConditionRow(condition: $condition) {
-                    branch.conditions.removeAll { $0.id == condition.id }
-                }
-            }
-            Menu {
-                ForEach(WorkflowCondition.Kind.allCases, id: \.self) { kind in
-                    Button(kind.title) { branch.conditions.append(WorkflowCondition(kind: kind)) }
-                }
-            } label: {
-                Label("Add a condition", systemImage: "plus")
-            }
-            .menuStyle(.borderlessButton).fixedSize()
+            ConditionList(conditions: $branch.conditions)
 
             Text("THEN").font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
             StepsEditor(steps: $branch.steps)
@@ -148,7 +136,7 @@ private struct BranchEditor: View {
     }
 }
 
-private struct ConditionRow: View {
+struct ConditionRow: View {
     @Binding var condition: WorkflowCondition
     let remove: () -> Void
 
@@ -163,6 +151,13 @@ private struct ConditionRow: View {
                 details
                 Spacer(minLength: 0)
                 Button(action: remove) { Image(systemName: "minus.circle") }.buttonStyle(.quiet)
+            }
+            if condition.kind == .group {
+                ConditionList(conditions: $condition.children)
+                    .padding(.leading, 14)
+                    .overlay(alignment: .leading) {
+                        Rectangle().fill(Theme.accent.opacity(0.4)).frame(width: 2)
+                    }
             }
             if let problem = condition.problem {
                 Text(problem).font(.caption).foregroundStyle(Theme.warning)
@@ -244,6 +239,14 @@ private struct ConditionRow: View {
             }.labelsHidden().fixedSize()
         case .bluetoothDevice, .usbDevice, .audioOutput:
             DeviceFields(condition: $condition)
+        case .group:
+            Picker("", selection: $condition.negate) {
+                Text("Holds when").tag(false)
+                Text("Holds when not").tag(true)
+            }.labelsHidden().fixedSize()
+            Picker("", selection: $condition.match) {
+                ForEach(WorkflowBranch.Match.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.labelsHidden().fixedSize()
         }
     }
 
@@ -302,6 +305,90 @@ private struct DeviceFields: View {
         .task(id: condition.kind) {
             let kind = condition.kind
             detected = await Task.detached { SystemSnapshot.deviceNames(for: kind) }.value
+        }
+    }
+}
+
+
+/// A list of conditions with an add menu. Used by a branch, inside a group (which can hold more groups), and by "only if".
+struct ConditionList: View {
+    @Binding var conditions: [WorkflowCondition]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach($conditions) { $condition in
+                ConditionRow(condition: $condition) {
+                    conditions.removeAll { $0.id == condition.id }
+                }
+            }
+            Menu {
+                ForEach(WorkflowCondition.Kind.allCases, id: \.self) { kind in
+                    Button(kind.title) { conditions.append(WorkflowCondition(kind: kind)) }
+                }
+            } label: {
+                Label("Add a condition", systemImage: "plus")
+            }
+            .menuStyle(.borderlessButton).fixedSize()
+        }
+    }
+}
+
+/// "Only run this action if…", under an action. Tested when the action is about to run.
+struct GuardEditor: View {
+    @Binding var guardIf: StepGuard?
+
+    private var conditions: Binding<[WorkflowCondition]> {
+        Binding(get: { guardIf?.conditions ?? [] }, set: { guardIf?.conditions = $0 })
+    }
+    private var match: Binding<WorkflowBranch.Match> {
+        Binding(get: { guardIf?.match ?? .all }, set: { guardIf?.match = $0 })
+    }
+    private var otherwise: Binding<StepGuard.Otherwise> {
+        Binding(get: { guardIf?.otherwise ?? .skip }, set: { guardIf?.otherwise = $0 })
+    }
+    private var wait: Binding<Double> {
+        Binding(get: { guardIf?.waitSeconds ?? 10 }, set: { guardIf?.waitSeconds = $0 })
+    }
+
+    var body: some View {
+        if let gate = guardIf {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Text("ONLY IF").font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
+                    if gate.conditions.count > 1 {
+                        Picker("", selection: match) {
+                            ForEach(WorkflowBranch.Match.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }.labelsHidden().fixedSize()
+                    }
+                    Spacer()
+                    Button { guardIf = nil } label: { Image(systemName: "xmark.circle") }.buttonStyle(.quiet)
+                }
+                ConditionList(conditions: conditions)
+                HStack(spacing: 8) {
+                    Text("If not:").font(.caption).foregroundStyle(Theme.secondary)
+                    Picker("", selection: otherwise) {
+                        ForEach(StepGuard.Otherwise.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.labelsHidden().fixedSize()
+                    if gate.otherwise == .wait {
+                        Stepper(value: wait, in: 1...StepGuard.longestWait, step: 1) {
+                            Text("\(Int(gate.waitSeconds)) s").font(.caption)
+                        }.fixedSize()
+                    }
+                }
+                if let problem = gate.problem {
+                    Text(problem).font(.caption).foregroundStyle(Theme.warning)
+                }
+            }
+            .padding(10)
+            .background(Theme.surfaceRaised.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        } else {
+            Button {
+                guardIf = StepGuard(conditions: [WorkflowCondition(kind: .timeBetween)])
+            } label: {
+                Label("Only run this action if…", systemImage: "arrow.triangle.branch")
+            }
+            .buttonStyle(.quiet)
         }
     }
 }

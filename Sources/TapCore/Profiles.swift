@@ -13,19 +13,23 @@ public struct ActionStep: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var delayAfter: Double
     /// Imported steps that can run code start disabled.
     public var enabled: Bool
+    /// "Only if": tested when this step is about to run. Nil means it always runs.
+    public var guardIf: StepGuard?
 
     public init(
         id: String = IDs.new(),
         actionId: String,
         parameter: String = "",
         delayAfter: Double = 0,
-        enabled: Bool = true
+        enabled: Bool = true,
+        guardIf: StepGuard? = nil
     ) {
         self.id = id
         self.actionId = actionId
         self.parameter = parameter
         self.delayAfter = delayAfter
         self.enabled = enabled
+        self.guardIf = guardIf
     }
 }
 
