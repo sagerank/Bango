@@ -15,6 +15,17 @@ public struct SystemContext: Equatable, Sendable {
     public var onBattery: Bool?
     public var batteryPercent: Double?
     public var externalDisplays: Int
+    /// Nil when it cannot be read (no Wi-Fi hardware, no Bluetooth).
+    public var wifiOn: Bool?
+    public var wifiConnected: Bool?
+    public var bluetoothOn: Bool?
+    /// Names of the Bluetooth devices connected right now.
+    public var bluetoothDevices: [String]
+    /// Names of the USB devices and peripherals plugged in right now.
+    public var usbDevices: [String]
+    /// Name of the device the sound is going to. Nil when unknown.
+    public var audioOutput: String?
+    public var lowPowerMode: Bool?
 
     public init(
         minutesSinceMidnight: Int = 0,
@@ -24,7 +35,14 @@ public struct SystemContext: Equatable, Sendable {
         runningBundleIDs: Set<String> = [],
         onBattery: Bool? = nil,
         batteryPercent: Double? = nil,
-        externalDisplays: Int = 0
+        externalDisplays: Int = 0,
+        wifiOn: Bool? = nil,
+        wifiConnected: Bool? = nil,
+        bluetoothOn: Bool? = nil,
+        bluetoothDevices: [String] = [],
+        usbDevices: [String] = [],
+        audioOutput: String? = nil,
+        lowPowerMode: Bool? = nil
     ) {
         self.minutesSinceMidnight = minutesSinceMidnight
         self.weekday = weekday
@@ -34,6 +52,13 @@ public struct SystemContext: Equatable, Sendable {
         self.onBattery = onBattery
         self.batteryPercent = batteryPercent
         self.externalDisplays = externalDisplays
+        self.wifiOn = wifiOn
+        self.wifiConnected = wifiConnected
+        self.bluetoothOn = bluetoothOn
+        self.bluetoothDevices = bluetoothDevices
+        self.usbDevices = usbDevices
+        self.audioOutput = audioOutput
+        self.lowPowerMode = lowPowerMode
     }
 
     /// Time fields taken from a date.
@@ -49,19 +74,33 @@ public struct SystemContext: Equatable, Sendable {
 
 public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sendable {
     public enum Kind: String, Codable, CaseIterable, Sendable {
-        case justStarted, frontApp, appRunning, timeBetween, weekday, onBattery, batteryBelow, externalDisplay
+        case justStarted, timeBetween, weekday, frontApp, appRunning
+        case onBattery, batteryBelow, lowPowerMode, externalDisplay
+        case wifiOn, wifiConnected, bluetoothOn, bluetoothDevice, usbDevice, audioOutput
 
         public var title: String {
             switch self {
             case .justStarted: return "The Mac just started"
-            case .frontApp: return "An app is in front"
-            case .appRunning: return "An app is running"
             case .timeBetween: return "The time of day"
             case .weekday: return "The day of the week"
+            case .frontApp: return "An app is in front"
+            case .appRunning: return "An app is running"
             case .onBattery: return "Battery or plugged in"
             case .batteryBelow: return "The battery level"
+            case .lowPowerMode: return "Low Power Mode"
             case .externalDisplay: return "An external display"
+            case .wifiOn: return "Wi-Fi on or off"
+            case .wifiConnected: return "Wi-Fi connection"
+            case .bluetoothOn: return "Bluetooth on or off"
+            case .bluetoothDevice: return "A Bluetooth device"
+            case .usbDevice: return "A USB device or peripheral"
+            case .audioOutput: return "The sound output"
             }
+        }
+
+        /// Conditions that look at a named device. Bluetooth and USB also work without a name, meaning any device.
+        public var usesDeviceName: Bool {
+            self == .bluetoothDevice || self == .usbDevice || self == .audioOutput
         }
     }
 
@@ -134,6 +173,21 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
             result = context.batteryPercent.map { $0 < number }
         case .externalDisplay:
             result = context.externalDisplays > 0
+        case .lowPowerMode:
+            result = context.lowPowerMode
+        case .wifiOn:
+            result = context.wifiOn
+        case .wifiConnected:
+            result = context.wifiConnected
+        case .bluetoothOn:
+            result = context.bluetoothOn
+        case .bluetoothDevice:
+            // Bluetooth that is off or unreadable has no devices to speak of, so that is unknown, not "none".
+            result = context.bluetoothOn == false ? false : (context.bluetoothOn == nil ? nil : Self.matches(context.bluetoothDevices, value))
+        case .usbDevice:
+            result = Self.matches(context.usbDevices, value)
+        case .audioOutput:
+            result = value.trimmingCharacters(in: .whitespaces).isEmpty ? nil : context.audioOutput.map { Self.matches([$0], value) }
         }
         guard let result else { return false }
         return negate ? !result : result
@@ -159,7 +213,29 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         case .batteryBelow:
             return negate ? "the battery is at \(Int(number))% or more" : "the battery is below \(Int(number))%"
         case .externalDisplay: return negate ? "no external display is connected" : "an external display is connected"
+        case .lowPowerMode: return negate ? "Low Power Mode is off" : "Low Power Mode is on"
+        case .wifiOn: return negate ? "Wi-Fi is off" : "Wi-Fi is on"
+        case .wifiConnected: return negate ? "the Mac is not connected to Wi-Fi" : "the Mac is connected to Wi-Fi"
+        case .bluetoothOn: return negate ? "Bluetooth is off" : "Bluetooth is on"
+        case .bluetoothDevice:
+            let device = deviceName.isEmpty ? "A Bluetooth device" : deviceName
+            return negate ? "\(device) is not connected" : "\(device) is connected"
+        case .usbDevice:
+            let device = deviceName.isEmpty ? "A USB device" : deviceName
+            return negate ? "\(device) is not plugged in" : "\(device) is plugged in"
+        case .audioOutput:
+            let device = deviceName.isEmpty ? "the chosen device" : deviceName
+            return negate ? "the sound is not going to \(device)" : "the sound is going to \(device)"
         }
+    }
+
+    private var deviceName: String { value.trimmingCharacters(in: .whitespaces) }
+
+    /// Part of a device name, ignoring capitals and accents. No name matches any device at all.
+    static func matches(_ names: [String], _ needle: String) -> Bool {
+        let wanted = needle.trimmingCharacters(in: .whitespaces)
+        if wanted.isEmpty { return !names.isEmpty }
+        return names.contains { $0.range(of: wanted, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
     }
 
     public static func clock(_ minutes: Int) -> String {
@@ -171,6 +247,7 @@ public struct WorkflowCondition: Codable, Equatable, Hashable, Identifiable, Sen
         switch kind {
         case .frontApp, .appRunning: return value.isEmpty ? "Choose an app" : nil
         case .weekday: return days.isEmpty ? "Choose at least one day" : nil
+        case .audioOutput: return deviceName.isEmpty ? "Type part of the output device's name" : nil
         default: return nil
         }
     }

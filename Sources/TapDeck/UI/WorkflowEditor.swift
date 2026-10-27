@@ -232,6 +232,18 @@ private struct ConditionRow: View {
                 Text("is connected").tag(false)
                 Text("is not connected").tag(true)
             }.labelsHidden().fixedSize()
+        case .lowPowerMode, .wifiOn, .bluetoothOn:
+            Picker("", selection: $condition.negate) {
+                Text("is on").tag(false)
+                Text("is off").tag(true)
+            }.labelsHidden().fixedSize()
+        case .wifiConnected:
+            Picker("", selection: $condition.negate) {
+                Text("is connected").tag(false)
+                Text("is not connected").tag(true)
+            }.labelsHidden().fixedSize()
+        case .bluetoothDevice, .usbDevice, .audioOutput:
+            DeviceFields(condition: $condition)
         }
     }
 
@@ -245,5 +257,51 @@ private struct ConditionRow: View {
                 minutes.wrappedValue = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
             }
         )
+    }
+}
+
+
+/// Name box for the device conditions, with a menu of what is connected right now.
+private struct DeviceFields: View {
+    @Binding var condition: WorkflowCondition
+    @State private var detected: [String] = []
+
+    private var verbs: (yes: String, no: String) {
+        switch condition.kind {
+        case .bluetoothDevice: return ("is connected", "is not connected")
+        case .usbDevice: return ("is plugged in", "is not plugged in")
+        default: return ("is the output", "is not the output")
+        }
+    }
+
+    private var hint: String {
+        condition.kind == .audioOutput ? "Part of the name, like AirPods" : "Part of the name, or blank for any"
+    }
+
+    var body: some View {
+        Picker("", selection: $condition.negate) {
+            Text(verbs.yes).tag(false)
+            Text(verbs.no).tag(true)
+        }.labelsHidden().fixedSize()
+        TextField(hint, text: Binding(
+            get: { condition.value },
+            set: { condition.value = $0; condition.label = $0 }
+        ))
+        .textFieldStyle(.roundedBorder)
+        .frame(width: 200)
+        Menu("Detected") {
+            if detected.isEmpty {
+                Text("Nothing found right now")
+            } else {
+                ForEach(detected, id: \.self) { name in
+                    Button(name) { condition.value = name; condition.label = name }
+                }
+            }
+        }
+        .menuStyle(.borderlessButton).fixedSize()
+        .task(id: condition.kind) {
+            let kind = condition.kind
+            detected = await Task.detached { SystemSnapshot.deviceNames(for: kind) }.value
+        }
     }
 }

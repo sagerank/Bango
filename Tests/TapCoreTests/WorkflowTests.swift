@@ -55,6 +55,59 @@ final class WorkflowConditionTests: XCTestCase {
         XCTAssertTrue(WorkflowCondition(kind: .externalDisplay, negate: true).isMet(in: context(displays: 0)))
     }
 
+    func testNetworkAndPowerConditionsNeverGuess() {
+        let on = SystemContext(wifiOn: true, wifiConnected: false, lowPowerMode: true)
+        XCTAssertTrue(WorkflowCondition(kind: .wifiOn).isMet(in: on))
+        XCTAssertFalse(WorkflowCondition(kind: .wifiConnected).isMet(in: on))
+        XCTAssertTrue(WorkflowCondition(kind: .wifiConnected, negate: true).isMet(in: on))
+        XCTAssertTrue(WorkflowCondition(kind: .lowPowerMode).isMet(in: on))
+        let unknown = SystemContext()
+        for kind in [WorkflowCondition.Kind.wifiOn, .wifiConnected, .bluetoothOn, .lowPowerMode] {
+            XCTAssertFalse(WorkflowCondition(kind: kind).isMet(in: unknown), "\(kind) unknown is not met")
+            XCTAssertFalse(WorkflowCondition(kind: kind, negate: true).isMet(in: unknown), "\(kind) unknown is not met when negated")
+        }
+    }
+
+    func testBluetoothDevicesMatchPartOfTheNameAndNeedBluetoothOn() {
+        let c = SystemContext(bluetoothOn: true, bluetoothDevices: ["Veer's AirPods Pro", "Magic Keyboard"])
+        XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, value: "airpods").isMet(in: c), "capitals do not matter")
+        XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, value: "").isMet(in: c), "no name means any device")
+        XCTAssertFalse(WorkflowCondition(kind: .bluetoothDevice, value: "Mouse").isMet(in: c))
+        XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, negate: true, value: "Mouse").isMet(in: c))
+        let off = SystemContext(bluetoothOn: false, bluetoothDevices: [])
+        XCTAssertFalse(WorkflowCondition(kind: .bluetoothDevice, value: "AirPods").isMet(in: off))
+        XCTAssertTrue(WorkflowCondition(kind: .bluetoothDevice, negate: true, value: "AirPods").isMet(in: off))
+        XCTAssertFalse(WorkflowCondition(kind: .bluetoothDevice, value: "AirPods").isMet(in: SystemContext()), "unreadable Bluetooth is unknown")
+        XCTAssertFalse(WorkflowCondition(kind: .bluetoothDevice, negate: true, value: "AirPods").isMet(in: SystemContext()))
+    }
+
+    func testUSBAndAudioOutputConditions() {
+        let c = SystemContext(usbDevices: ["Logitech MX Keys", "CalDigit TS4"], audioOutput: "MacBook Pro Speakers")
+        XCTAssertTrue(WorkflowCondition(kind: .usbDevice, value: "caldigit").isMet(in: c))
+        XCTAssertTrue(WorkflowCondition(kind: .usbDevice).isMet(in: c), "any USB device")
+        XCTAssertFalse(WorkflowCondition(kind: .usbDevice).isMet(in: SystemContext()), "nothing plugged in")
+        XCTAssertTrue(WorkflowCondition(kind: .usbDevice, negate: true).isMet(in: SystemContext()))
+        XCTAssertTrue(WorkflowCondition(kind: .audioOutput, value: "speakers").isMet(in: c))
+        XCTAssertFalse(WorkflowCondition(kind: .audioOutput, value: "AirPods").isMet(in: c))
+        XCTAssertFalse(WorkflowCondition(kind: .audioOutput, value: "AirPods").isMet(in: SystemContext()), "unknown output")
+        XCTAssertFalse(WorkflowCondition(kind: .audioOutput).isMet(in: c), "no name chosen is never met")
+        XCTAssertNotNil(WorkflowCondition(kind: .audioOutput).problem)
+        XCTAssertNil(WorkflowCondition(kind: .usbDevice).problem)
+    }
+
+    func testDeviceConditionsReadAsPlainWordsAndSurviveSaving() throws {
+        XCTAssertEqual(WorkflowCondition(kind: .bluetoothDevice, value: "AirPods").summary, "AirPods is connected")
+        XCTAssertEqual(WorkflowCondition(kind: .usbDevice, negate: true).summary, "A USB device is not plugged in")
+        XCTAssertEqual(WorkflowCondition(kind: .audioOutput, value: "AirPods").summary, "the sound is going to AirPods")
+        XCTAssertEqual(WorkflowCondition(kind: .wifiOn, negate: true).summary, "Wi-Fi is off")
+        let original = WorkflowCondition(kind: .usbDevice, negate: true, value: "Dock")
+        let decoded = try JSONDecoder().decode(WorkflowCondition.self, from: JSONEncoder().encode(original))
+        XCTAssertEqual(decoded, original)
+        // A profile saved by a newer Bango with a condition this one does not know falls back to a safe default.
+        let future = #"{"id":"x","kind":"someFutureKind"}"#.data(using: .utf8)!
+        XCTAssertEqual(try JSONDecoder().decode(WorkflowCondition.self, from: future).kind, .justStarted)
+    }
+
     func testSummariesReadAsPlainWords() {
         XCTAssertEqual(WorkflowCondition(kind: .justStarted, number: 30).summary, "the Mac started less than 30 minutes ago")
         XCTAssertEqual(WorkflowCondition(kind: .timeBetween, from: 19 * 60, to: 6 * 60).summary, "it is between 19:00 and 06:00")

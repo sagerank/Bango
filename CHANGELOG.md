@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- **Many more conditions** for Bango macros (the if and else rules): Wi-Fi on or off, Wi-Fi connected, Bluetooth on or off, a named Bluetooth device connected (AirPods, a keyboard), a named USB device or peripheral plugged in (a dock, a mouse), where the sound is going (headphones, speakers, a display), and Low Power Mode. They sit with the existing time, day, app, battery, display and "just started" conditions.
+- Each device condition has a name box (part of the name is enough, capitals ignored, blank means any device) and a "Detected" menu that lists what is connected right now.
+- Never guesses: if Bango cannot read Wi-Fi, Bluetooth or the output, that condition is simply not met, with or without "not". "Check against right now" now shows these facts too.
+- Devices are only read when a macro actually uses them, so no Bluetooth access happens unless you ask for it.
+- Not yet seen on a Mac. The Wi-Fi network name is not offered, because macOS only shows it to apps that have Location access.
+
 ## 1.0.2
 
 - Permissions now have a guided wizard: one permission per screen (Accessibility, Screen Recording, Dictation, Open at login), what it is for, one button, and it moves on by itself once macOS says yes. It is the permissions step of the welcome tour, and a "Guided setup" button on the Setup page. The full list stays on Setup for anyone who wants it.

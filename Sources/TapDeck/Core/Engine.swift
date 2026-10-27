@@ -137,7 +137,8 @@ final class Engine: ObservableObject {
             label += " · \(note)"
         }
         // With a workflow, the Mac's state at this moment picks the branch.
-        let chosen = binding.resolvedSteps(in: SystemSnapshot.capture(frontmost: frontmostBundleID))
+        let needed = Set(binding.workflow?.branches.flatMap { $0.conditions.map { $0.kind } } ?? [])
+        let chosen = binding.resolvedSteps(in: SystemSnapshot.capture(frontmost: frontmostBundleID, needing: needed))
         if let number = chosen.branchNumber { label += " · if \(number)" }
         let enabledSteps = chosen.steps.filter { $0.enabled }
         guard !enabledSteps.isEmpty else {

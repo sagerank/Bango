@@ -158,6 +158,8 @@ cat > "$PLIST" <<PLISTEOF
     <key>NSSupportsSuddenTermination</key><false/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Bango sends Apple Events only for actions you choose, such as switching dark mode or ejecting drives.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Bango reads which Bluetooth devices are connected, only for workflow conditions you set up, such as "when AirPods are connected".</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Bango listens only between the two double taps of dictation, to turn your speech into text on this Mac.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
