@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.1
+
+Setup kept asking for Automation, and Screen Recording said "Restart TapDeck" for ever. **Compiled by CI, not yet seen on a Mac.**
+
+- Automation (System Events and Finder): the answer is now remembered for the build and read quietly when the Setup list opens, without starting System Events and without prompting. Before, every launch showed "Not checked yet" even when macOS had already allowed it. A new build is a different app to macOS, so the memory is per build
+- Screen Recording: "Allowed. Restart TapDeck to finish" now shows only until TapDeck has been restarted. If macOS still refuses after a restart, the row says so plainly: the entry in System Settings is an old one from an earlier build, remove it with the minus button, add TapDeck again, restart. It has a button that opens that Settings page
+- 4 new tests (181 in total) for the Screen Recording states
+
 ## 0.12.0
 
 Step 3 of docs/PLAN_DICTATION_WORKFLOWS.md: desk setup. **The layout maths and the parsing are tested on this machine. Moving real windows through Accessibility could not be tested and needs a Mac.**

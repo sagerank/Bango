@@ -121,3 +121,23 @@ final class InstancePolicyTests: XCTestCase {
         XCTAssertTrue(InstancePolicy.copiesToClose(me: Copy(pid: 1, launched: 1), others: []).isEmpty)
     }
 }
+
+final class ScreenRecordingStateTests: XCTestCase {
+    func testGrantedAlwaysWins() {
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: true, requestedAt: 5, launchedAt: 100), .granted)
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: true, requestedAt: nil, launchedAt: 100), .granted)
+    }
+
+    func testNeverAskedIsMissing() {
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: false, requestedAt: nil, launchedAt: 100), .missing)
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: false, requestedAt: 0, launchedAt: 100), .missing)
+    }
+
+    func testAskedThisRunMeansRestartIsNeeded() {
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: false, requestedAt: 150, launchedAt: 100), .needsRestart)
+    }
+
+    func testStillRefusedAfterARestartIsNotCalledARestartAnyMore() {
+        XCTAssertEqual(ScreenRecordingState.evaluate(granted: false, requestedAt: 50, launchedAt: 100), .stillRefused)
+    }
+}

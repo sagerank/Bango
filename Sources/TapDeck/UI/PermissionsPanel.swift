@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import TapCore
 
@@ -50,9 +51,13 @@ struct PermissionsPanel: View {
         .task {
             // Only cheap checks run by themselves. Nothing is requested until a button is pressed.
             center.refreshQuick()
+            await center.refreshAutomationQuietly()
+            var ticks = 0
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 center.refreshQuick()
+                ticks += 1
+                if ticks % 3 == 0 { await center.refreshAutomationQuietly() }
             }
         }
         .confirmationDialog("Clear every permission TapDeck was given?", isPresented: $confirmReset) {
@@ -77,6 +82,13 @@ struct PermissionsPanel: View {
                 }
                 if state == .unknown {
                     Text("Not checked yet. Press Allow to ask macOS.").font(.caption2).foregroundStyle(Theme.secondary)
+                }
+                if item == .screenRecording && center.screenRecordingStillRefused {
+                    Text("Still not allowed after a restart. If TapDeck is switched on in System Settings, Screen Recording, it is an old entry from an earlier build. Remove it with the minus button, add TapDeck again with the plus button, then restart TapDeck.")
+                        .font(.caption2).foregroundStyle(Theme.warning)
+                    Button("Open Screen Recording settings") {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") { NSWorkspace.shared.open(url) }
+                    }.buttonStyle(.quiet)
                 }
                 if state == .needsRestart {
                     Text("Allowed. Restart TapDeck to finish.").font(.caption2).foregroundStyle(Theme.warning)

@@ -20,6 +20,13 @@ enum AutomationPermission {
         await determineStatus(target: target, askUserIfNeeded: false)
     }
 
+    /// Asks macOS without starting the target app and without prompting. Nil when the target is not running,
+    /// because macOS cannot answer for an app that is not there.
+    static func quietStatus(for target: String) async -> Status? {
+        guard !NSRunningApplication.runningApplications(withBundleIdentifier: target).isEmpty else { return nil }
+        return await determineStatus(target: target, askUserIfNeeded: false)
+    }
+
     static func requestIfNeeded(for target: String = systemEvents) async -> Status {
         await determineStatus(target: target, askUserIfNeeded: true)
     }

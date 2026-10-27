@@ -28,6 +28,8 @@ final class PermissionCenter: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var current: SetupItem?
     @Published private(set) var note: String?
+    /// Screen Recording was asked for in an earlier run and macOS still refuses it.
+    @Published private(set) var screenRecordingStillRefused = false
 
     private var skipRequested = false
     private let defaults = UserDefaults.standard
@@ -64,7 +66,31 @@ final class PermissionCenter: ObservableObject {
     }
 
     func state(_ item: SetupItem) -> Status {
-        status[item] ?? ((item == .systemEvents || item == .finder) ? .unknown : .missing)
+        if let known = status[item] { return known }
+        if let bundle = Self.automationTarget(item) {
+            return rememberedGrant(bundle) ? .granted : .unknown
+        }
+        return .missing
+    }
+
+    private static func automationTarget(_ item: SetupItem) -> String? {
+        switch item {
+        case .systemEvents: return AutomationPermission.systemEvents
+        case .finder: return AutomationPermission.finder
+        default: return nil
+        }
+    }
+
+    /// Automation answers are remembered for this build, so the list is right as soon as it opens.
+    /// A new build is a different app to macOS, so the memory is per build.
+    private func automationMemoryKey(_ bundle: String) -> String { "setup.automation.\(bundle).\(buildID)" }
+    private func rememberedGrant(_ bundle: String) -> Bool { defaults.bool(forKey: automationMemoryKey(bundle)) }
+    private func remember(_ bundle: String, granted: Bool) {
+        if granted { defaults.set(true, forKey: automationMemoryKey(bundle)) } else { defaults.removeObject(forKey: automationMemoryKey(bundle)) }
+    }
+
+    private var launchedAt: Double {
+        (NSRunningApplication.current.launchDate ?? Date(timeIntervalSinceNow: -ProcessInfo.processInfo.systemUptime)).timeIntervalSince1970
     }
 
     var allDone: Bool {
@@ -83,11 +109,17 @@ final class PermissionCenter: ObservableObject {
         next[.accessibility] = AccessibilityPermission.isTrusted(promptIfNeeded: false) ? .granted : .missing
         next[.microphone] = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized ? .granted : .missing
         next[.speechRecognition] = SFSpeechRecognizer.authorizationStatus() == .authorized ? .granted : .missing
-        if ScreenCapture.hasPermission {
-            next[.screenRecording] = .granted
-        } else {
-            next[.screenRecording] = defaults.bool(forKey: screenRequestedKey) ? .needsRestart : .missing
+        let requested = defaults.double(forKey: screenRequestedKey)
+        let screen = ScreenRecordingState.evaluate(
+            granted: ScreenCapture.hasPermission, requestedAt: requested > 0 ? requested : nil, launchedAt: launchedAt
+        )
+        switch screen {
+        case .granted: next[.screenRecording] = .granted
+        case .needsRestart: next[.screenRecording] = .needsRestart
+        case .missing, .stillRefused: next[.screenRecording] = .missing
         }
+        let refused = screen == .stillRefused
+        if refused != screenRecordingStillRefused { screenRecordingStillRefused = refused }
         next[.screenshotFolder] = folderNeedsPermission ? (defaults.string(forKey: folderGrantedKey) == buildID ? .granted : .missing) : .granted
         if !LaunchAtLogin.isAvailable {
             next[.loginItem] = .unavailable
@@ -99,12 +131,33 @@ final class PermissionCenter: ObservableObject {
         if next != status { status = next }
     }
 
+    /// Reads Automation without starting anything or prompting: Finder is always running, System Events only
+    /// when something started it. When a target is not running the remembered answer for this build is used.
+    func refreshAutomationQuietly() async {
+        var next = status
+        for item in [SetupItem.systemEvents, .finder] {
+            guard let bundle = Self.automationTarget(item) else { continue }
+            if let answer = await AutomationPermission.quietStatus(for: bundle) {
+                let mapped = Self.map(answer)
+                next[item] = mapped
+                remember(bundle, granted: mapped == .granted)
+            } else if rememberedGrant(bundle) {
+                next[item] = .granted
+            }
+        }
+        if next != status { status = next }
+    }
+
     /// Also asks System Events and Finder whether they would allow TapDeck. Starts them if they are not running.
     func refreshAll() async {
         refreshQuick()
         var next = status
-        next[.systemEvents] = Self.map(await AutomationPermission.currentStatus(for: AutomationPermission.systemEvents))
-        next[.finder] = Self.map(await AutomationPermission.currentStatus(for: AutomationPermission.finder))
+        let events = await AutomationPermission.currentStatus(for: AutomationPermission.systemEvents)
+        let finder = await AutomationPermission.currentStatus(for: AutomationPermission.finder)
+        next[.systemEvents] = Self.map(events)
+        next[.finder] = Self.map(finder)
+        remember(AutomationPermission.systemEvents, granted: events == .granted)
+        remember(AutomationPermission.finder, granted: finder == .granted)
         if next != status { status = next }
     }
 
@@ -155,6 +208,7 @@ final class PermissionCenter: ObservableObject {
         case .systemEvents:
             let result = await AutomationPermission.requestIfNeeded(for: AutomationPermission.systemEvents)
             status[.systemEvents] = Self.map(result)
+            remember(AutomationPermission.systemEvents, granted: result == .granted)
             if result == .denied {
                 note = "Automation was refused earlier. Switch System Events on under Privacy & Security, Automation."
                 AutomationPermission.openSystemSettings()
@@ -162,6 +216,7 @@ final class PermissionCenter: ObservableObject {
         case .finder:
             let result = await AutomationPermission.requestIfNeeded(for: AutomationPermission.finder)
             status[.finder] = Self.map(result)
+            remember(AutomationPermission.finder, granted: result == .granted)
             if result == .denied {
                 note = "Automation was refused earlier. Switch Finder on under Privacy & Security, Automation."
                 AutomationPermission.openSystemSettings()
@@ -192,7 +247,7 @@ final class PermissionCenter: ObservableObject {
             _ = AccessibilityPermission.requestIfNeeded()
             _ = await waitFor(timeout: 120) { AccessibilityPermission.isTrusted(promptIfNeeded: false) }
         case .screenRecording:
-            defaults.set(true, forKey: screenRequestedKey)
+            defaults.set(Date().timeIntervalSince1970, forKey: screenRequestedKey)
             ScreenCapture.requestPermission()
             // macOS usually only reports this after a restart, so a short wait is enough.
             _ = await waitFor(timeout: 45) { ScreenCapture.hasPermission }
@@ -237,6 +292,7 @@ final class PermissionCenter: ObservableObject {
         }
         defaults.removeObject(forKey: screenRequestedKey)
         defaults.removeObject(forKey: folderGrantedKey)
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("setup.automation.") { defaults.removeObject(forKey: key) }
         note = "Permissions cleared. Press Set up everything to allow them again."
         await refreshAll()
     }

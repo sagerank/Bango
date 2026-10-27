@@ -117,3 +117,22 @@ public enum SetupPolicy {
         return !accessibilityGranted || !screenRecordingGranted
     }
 }
+
+/// What to show for Screen Recording. macOS only applies a new Screen Recording permission after the app restarts,
+/// so "restart" is right until the app has been restarted. If it still says no after that, the honest message is
+/// different: the entry in System Settings does not belong to this build, which is common when the app is not signed.
+public enum ScreenRecordingState: Equatable, Sendable {
+    case granted
+    /// Never asked for.
+    case missing
+    /// Asked for during this run: macOS needs the app restarted before it counts.
+    case needsRestart
+    /// Asked for in an earlier run and macOS still refuses.
+    case stillRefused
+
+    public static func evaluate(granted: Bool, requestedAt: Double?, launchedAt: Double) -> ScreenRecordingState {
+        if granted { return .granted }
+        guard let requestedAt, requestedAt > 0 else { return .missing }
+        return requestedAt >= launchedAt ? .needsRestart : .stillRefused
+    }
+}
