@@ -61,6 +61,21 @@ final class AppModel: ObservableObject {
             .sink { [weak self] in self?.menuBarSymbol = $0 }
             .store(in: &cancellables)
 
+        // Settings are saved a moment after each change, so save now when the app is told to quit.
+        NotificationCenter.default.publisher(for: .tapDeckWillTerminate)
+            .sink { [weak self] _ in self?.store.flush() }
+            .store(in: &cancellables)
+
+        // While the window is open TapDeck is a normal app (Dock icon, Cmd+Tab, Force Quit, a Quit menu).
+        // When it closes it goes back to the menu bar only.
+        NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] note in
+                guard let self, let closing = note.object as? NSWindow, closing === self.mainWindow else { return }
+                NSApp.setActivationPolicy(.accessory)
+            }
+            .store(in: &cancellables)
+
         NotificationCenter.default.publisher(for: .tapDeckShowWindow)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.showMainWindow() }
@@ -73,6 +88,7 @@ final class AppModel: ObservableObject {
 
     func showMainWindow() {
         guard let mainWindow else { return }
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         mainWindow.collectionBehavior.insert(.moveToActiveSpace)
         mainWindow.makeKeyAndOrderFront(nil)

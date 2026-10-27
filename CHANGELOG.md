@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.6
+
+Two menu bar icons, no way to quit, and missing from the Force Quit list. **The cause is inferred from screenshots, not reproduced; the fix is compiled by CI but not yet seen on a Mac.**
+
+- Only one TapDeck can run now. A copy left over from an earlier install is asked to quit when a newer one starts, and forced to if it does not. Before, a hidden old copy kept its own menu bar icon, could hold the motion sensor, and made Quit look broken because it only closed one copy
+- While the window is open TapDeck is a normal app: Dock icon, Cmd+Tab, the Force Quit list, and a Quit TapDeck menu with Cmd+Q. When the window closes it goes back to the menu bar only
+- Settings are saved immediately when the app is told to quit
+
 ## 0.9.5
 
 Fixes for soft and hard taps, rhythms and per-app gestures, which were reported as not working. **The tap-matching logic is tested on real data. The screens are compiled by CI but not yet seen running by the author.**

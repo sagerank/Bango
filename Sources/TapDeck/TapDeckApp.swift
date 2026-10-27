@@ -6,6 +6,11 @@ struct TapDeckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel()
 
+    init() {
+        // Before anything opens the motion sensor, so a leftover copy cannot be holding it.
+        SingleInstance.replaceOlderInstances()
+    }
+
     var body: some Scene {
         Window("TapDeck", id: "main") {
             DashboardView()
@@ -36,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        NotificationCenter.default.post(name: .tapDeckWillTerminate, object: nil)
+    }
+
     /// Clicking the app icon again, or opening it from Applications while it runs, brings the window back.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { NotificationCenter.default.post(name: .tapDeckShowWindow, object: nil) }
@@ -49,4 +58,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension Notification.Name {
     static let tapDeckShowWindow = Notification.Name("tapDeckShowWindow")
+    static let tapDeckWillTerminate = Notification.Name("tapDeckWillTerminate")
 }
