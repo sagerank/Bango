@@ -139,7 +139,8 @@ public struct DetectorOutput: Sendable {
 ///    level instead of coming out of calm.
 /// 5. **Carrying.** A second, slow gravity follower (250 ms) is compared with where it was half a second
 ///    earlier. If the Mac was tilted or lifted, taps are ignored for a while.
-/// 6. **Guard and spacing.** A tap that coincides with typing or clicking, or comes too soon after the last
+/// 6. **Warm-up.** For the first 0.4 s nothing is accepted, because the noise floor is still a guess.
+/// 7. **Guard and spacing.** A tap that coincides with typing or clicking, or comes too soon after the last
 ///    one, is ignored.
 ///
 /// The impact is reported 60 ms after it started, once its strongest moment and direction are known.
@@ -208,6 +209,8 @@ public final class ImpactDetector {
     private static let carryLag = 0.5
     private static let carryLimit = 0.05
     private static let carryHold = 0.8
+    /// Seconds after the first sample in which nothing is accepted, so the noise floor can learn the room first.
+    private static let warmup = 0.4
     // Noise floor.
     private static let bucketLength = 0.02
     private static let bucketCount = 100
@@ -232,6 +235,7 @@ public final class ImpactDetector {
     private var slowGravity = Vec3.zero
     private var initialized = false
     private var lastTime: Double?
+    private var startTime = 0.0
     private var fast = 0.0
     private var slow = 0.0
     private var lastAccepted = -Double.infinity
@@ -266,6 +270,7 @@ public final class ImpactDetector {
         slowGravity = .zero
         initialized = false
         lastTime = nil
+        startTime = 0
         fast = 0
         slow = 0
         lastAccepted = -Double.infinity
@@ -291,6 +296,7 @@ public final class ImpactDetector {
             gravity = sample
             slowGravity = sample
             bucketStart = now
+            startTime = now
             initialized = true
         }
 
@@ -345,6 +351,9 @@ public final class ImpactDetector {
                 blocker = .motion
             } else if !spaced {
                 blocker = .cooldown
+            } else if now - startTime < Self.warmup {
+                // The noise floor has not learned the room yet, so the threshold is only a guess.
+                blocker = .notQuiet
             } else {
                 let jumpFactor = sequenceOpen ? Self.followJump : Self.firstJump
                 let jumped = fast >= jumpFactor * max(valueBefore(now: now), 0.0001)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fix: the detector could report a phantom tap in the first fraction of a second after start, before its noise floor had learned the room (the test `testLiftingAndCarryingTheMacIsNotATap` caught it, and CI on 1.0.0 was red because of it). Nothing is accepted for the first 0.4 s now.
+
 ## 1.0.0
 
 First release under this version number. Same code as 0.15.0:
