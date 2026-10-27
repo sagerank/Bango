@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.8
+
+A guided way to learn the taps, so the app says what to do instead of naming gestures. **Compiled by CI, not yet seen on a Mac by the author.**
+
+- New guided practice in the welcome tour and on the Setup page. Each step shows a laptop with the exact spot pulsing, says in plain words what to do ("Knock once on the palm rest, like knocking on a door"), shows how many taps to make, and answers the moment you tap: "Heard a tap", then a green tick and the next step
+- When a try is wrong it says why and what to change: "That counted as 3 taps. Tap exactly 2, then stop", "Too slow, tap faster", "That felt like the right side. Try the left"
+- Steps: tap once, twice, three times. Left side, right side and near the hinge appear when zones are set up, with a button to teach them right there
+- Zone teaching now shows the laptop and the spot, says "Spot 1 of 3", counts "3 of 5 taps", and explains how to tap
+- A short do and do not line under every step: one fingertip, a light knock; not while typing, not hard, not on the screen
+- The main window is taller by default and the welcome tour shrinks to fit, so its buttons are never pushed off a small screen
+- 6 new tests (123 in total) for what counts as success and what each wrong try says
+
 ## 0.9.7
 
 The action dropdown could not be clicked, and setup acted on its own. **Compiled by CI, not yet seen on a Mac by the author.**

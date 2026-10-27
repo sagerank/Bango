@@ -4,8 +4,8 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 
-> **Status: version 0.9.7, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
-> All the code is written and the gesture logic has 117 unit tests, but it was written on a machine
+> **Status: version 0.9.8, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
+> All the code is written and the gesture logic has 123 unit tests, but it was written on a machine
 > without a Swift toolchain, so nothing has been compiled or tried on real hardware. Expect to fix
 > compile errors on the first build. Start with [docs/VERIFY_ON_MAC.md](docs/VERIFY_ON_MAC.md).
 > Please report what you find, see [Hardware reports](#hardware-reports).

@@ -6,9 +6,19 @@ struct SetupView: View {
     @EnvironmentObject private var monitor: MotionMonitor
     @ObservedObject private var center = PermissionCenter.shared
     let showTour: () -> Void
+    @EnvironmentObject private var store: ConfigStore
+    @EnvironmentObject private var engine: Engine
+    @State private var showPractice = false
 
     var body: some View {
-        content.onAppear { center.markSetupSeen() }
+        content
+            .onAppear { center.markSetupSeen() }
+            .sheet(isPresented: $showPractice) {
+                PracticeSheet()
+                    .environmentObject(store)
+                    .environmentObject(monitor)
+                    .environmentObject(engine)
+            }
     }
 
     private var content: some View {
@@ -29,6 +39,16 @@ struct SetupView: View {
                         Text(String(format: "Sensor rate: %.0f Hz", monitor.snapshot.sampleRate))
                             .font(.caption).foregroundStyle(Theme.secondary)
                     }
+                }
+            }
+
+            Card {
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Check that taps work")
+                    Text("A guided practice: it shows where to tap and tells you what it heard.")
+                        .font(.callout).foregroundStyle(Theme.secondary)
+                    Button("Start practice") { showPractice = true }.buttonStyle(.pillPrimary)
+                        .disabled(!(monitor.isSupported && monitor.isMonitoring))
                 }
             }
 

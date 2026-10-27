@@ -127,7 +127,7 @@ struct ZonesRhythmView: View {
 
 // MARK: - Zone wizard
 
-private struct ZoneWizard: View {
+struct ZoneWizard: View {
     @EnvironmentObject private var store: ConfigStore
     @EnvironmentObject private var monitor: MotionMonitor
     @EnvironmentObject private var engine: Engine
@@ -169,7 +169,7 @@ private struct ZoneWizard: View {
             footer
         }
         .padding(24)
-        .frame(width: 500, height: 420)
+        .frame(width: 520, height: 560)
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .onAppear {
@@ -184,25 +184,42 @@ private struct ZoneWizard: View {
 
     private func progress(for zone: TapZone) -> some View {
         let count = samples[zone]?.count ?? 0
+        let spot: TapLesson.Spot = zone == .left ? .left : (zone == .right ? .right : .top)
         return VStack(alignment: .leading, spacing: 12) {
+            Text("Spot \(stepNumber(zone)) of 3").font(.caption.weight(.semibold)).foregroundStyle(Theme.secondary)
+            Text(prompt(for: zone)).font(.title3.weight(.semibold)).foregroundStyle(Theme.text)
+            HStack {
+                Spacer()
+                LaptopGuide(spot: spot, mood: count > 0 ? .heard : .waiting)
+                Spacer()
+            }
             HStack(spacing: 10) {
                 ForEach(0..<needed, id: \.self) { index in
                     Circle()
-                        .fill(index < count ? Theme.accent : Theme.surfaceRaised)
+                        .fill(index < count ? Theme.good : Theme.surfaceRaised)
                         .frame(width: 14, height: 14)
                 }
+                Text("\(count) of \(needed) taps")
+                    .font(.callout.monospacedDigit()).foregroundStyle(Theme.secondary)
             }
-            Text(prompt(for: zone)).font(.title3.weight(.semibold)).foregroundStyle(Theme.text)
-            Text("Tap the same spot \(needed) times, about a second apart, with a finger. Not too hard.")
+            Text("Tap this same spot \(needed) times, about a second apart, with one fingertip. A light knock is enough.")
                 .font(.callout).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    private func stepNumber(_ zone: TapZone) -> Int {
+        switch zone {
+        case .left: return 1
+        case .right: return 2
+        default: return 3
         }
     }
 
     private func prompt(for zone: TapZone) -> String {
         switch zone {
-        case .left: return "Tap to the left of the trackpad"
-        case .right: return "Tap to the right of the trackpad"
-        case .top: return "Tap above the keyboard, near the hinge"
+        case .left: return "Tap the left side, next to the trackpad"
+        case .right: return "Tap the right side, next to the trackpad"
+        case .top: return "Tap just above the keyboard, near the hinge"
         case .any: return ""
         }
     }

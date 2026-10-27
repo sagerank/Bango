@@ -39,7 +39,7 @@ struct OnboardingView: View {
             footer
         }
         .padding(28)
-        .frame(width: 560, height: 640)
+        .frame(minWidth: 540, idealWidth: 580, minHeight: 560, idealHeight: 680)
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .interactiveDismissDisabled()
@@ -74,21 +74,15 @@ struct OnboardingView: View {
                 PermissionsPanel()
             }
         case .tryIt:
-            VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Try a tap", subtitle: "Tap the palm rest or the lid once, or tap twice quickly. Nothing will run yet.")
-                Card {
-                    HStack(spacing: 14) {
-                        IconBadge(symbol: "hand.tap", size: 44)
-                        if let lastGesture {
-                            Text(Describe.gesture(lastGesture)).font(.title3.weight(.semibold)).foregroundStyle(Theme.text)
-                        } else {
-                            Text("Waiting for a tap").font(.title3.weight(.semibold)).foregroundStyle(Theme.secondary)
-                        }
-                        Spacer()
-                    }
+            VStack(alignment: .leading, spacing: 10) {
+                PageHeader(title: "Learn the taps", subtitle: "Follow the steps. TapDeck shows what it heard. Nothing will run yet.")
+                ScrollView {
+                    TapTrainerView(
+                        lessons: TapLessons.basic,
+                        finishedDetail: "Taps are working. Left and right taps are optional: set them up later in Zones & rhythm."
+                    )
+                    .padding(.trailing, 6)
                 }
-                Text("If nothing shows up, open Tuning later and raise the sensitivity. If it jumps around while you type, the typing guard handles most of it.")
-                    .font(.callout).foregroundStyle(Theme.secondary)
             }
         case .safeStart:
             VStack(alignment: .leading, spacing: 16) {
