@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+
+First release under this version number. Same code as 0.15.0:
+
+- New tap detector, rewritten update checker and permission helpers
+- Tap rhythms match human timing, with a note in Activity when a rhythm is missed
+- Bango macros have their own section on the Gestures page
+- New installs start in test mode: gestures are logged and nothing runs until you turn it off in General
+- **Known limits:** detector tuned on one MacBook so far, zones (left, right, top) are experimental, and unsigned builds need a right-click Open the first time
+
 ## 0.15.0
 
 - **New tap detector, written from scratch.** The old one followed the structure of the open source app this project started from. The new one works on two signal envelopes: a tap is an abrupt jump above the recent level. It also uses a bucketed noise floor and a slow-gravity check for carrying. Checked on the real 26-tap MacBook recording (all taps found within 30 ms, also at half the sample rate), on the existing synthetic tests, and on 1,836 generated cases across seeds, spacings, strengths and ring lengths.
