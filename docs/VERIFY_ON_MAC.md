@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 181 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 188 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh
@@ -80,10 +80,12 @@ Turn off test mode in General first, and save your work. Then test each action o
 
 ## 6b. Dictation
 
+0. Setup, "Check that dictation can type": press it and click into a text box in the app you care about. The test sentence should appear there. If it does not, dictation cannot type in that app: tell me which app.
+
 1. Setup: press Allow on Microphone and Speech Recognition (and Accessibility if it is not on).
 2. Gestures, Add starter profiles, then switch to the Voice profile and turn test mode off.
 3. Click into a text field (Notes, a browser box). Double tap: a "Listening" pill should appear.
-4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the sentence is pasted into the field.
+4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the words appear in the field while you speak and nothing touches the clipboard.
 5. Try: Accessibility off (words go to the clipboard), a double tap with Microphone off (a clear message), talking for more than 2 minutes (it stops by itself).
 
 ## 6c. Workflows

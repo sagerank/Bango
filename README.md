@@ -4,15 +4,15 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 
-> **Status: version 0.12.3, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
-> All the code is written and the gesture logic has 181 unit tests, but it was written on a machine
+> **Status: version 0.13.0, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
+> All the code is written and the gesture logic has 188 unit tests, but it was written on a machine
 > without a Swift toolchain, so nothing has been compiled or tried on real hardware. Expect to fix
 > compile errors on the first build. Start with [docs/VERIFY_ON_MAC.md](docs/VERIFY_ON_MAC.md).
 > Please report what you find, see [Hardware reports](#hardware-reports).
 
 ## What it does
 
-- **Dictation on a double tap**: double tap to start listening, double tap again to stop and have your words typed into the app you were in. The same gesture turns it on or off. Speech is recognised on this Mac, nothing is sent away
+- **Dictation on a double tap**: double tap to start listening, words are typed straight into the text box of the app you were in as you speak, and a second double tap stops it. The same gesture turns it on or off. Speech is recognised on this Mac, nothing is sent away
 - **1 to 5 taps** mapped to actions, in profiles you switch from the menu bar (Work, Voice, Media, Meeting and Screenshots come built in)
 - **Typing guard**: taps are ignored while you type or click, because typing shakes the chassis. It reads only how long ago the last key or click happened, never which key
 - **48 actions**: dictation, open several apps, open files and links, arrange windows, apply a saved layout,  copy, paste, cut, undo, redo, select all, play and pause, next and previous track, volume, mute, microphone mute, brightness, sleep display, dark mode, keep awake, lock screen, screen saver, ten ways to take a screenshot (full screen or an area, saved to a file or copied to the clipboard, a window, or captured and marked up in Preview), open an app, open a link, Mission Control, show desktop, hide other apps, emoji picker, paste a saved snippet, Wi-Fi toggle, Bluetooth toggle, audio output switch, eject drives, run a Shortcut, run a Terminal command

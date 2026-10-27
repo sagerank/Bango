@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import TapCore
 
@@ -9,6 +10,7 @@ struct SetupView: View {
     @EnvironmentObject private var store: ConfigStore
     @EnvironmentObject private var engine: Engine
     @State private var showPractice = false
+    @State private var typingTest: String?
 
     var body: some View {
         content
@@ -52,6 +54,18 @@ struct SetupView: View {
                 }
             }
 
+            Card {
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Check that dictation can type")
+                    Text("Press the button, then click into a text box in any app within 3 seconds. TapDeck types a short sentence there, the same way dictation does.")
+                        .font(.callout).foregroundStyle(Theme.secondary)
+                    Button("Type a test sentence in 3 seconds") { runTypingTest() }.buttonStyle(.pill)
+                    if let typingTest {
+                        Text(typingTest).font(.callout).foregroundStyle(Theme.text)
+                    }
+                }
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Permissions")
                 PermissionsPanel()
@@ -61,6 +75,24 @@ struct SetupView: View {
                 Button("Show the welcome tour") { showTour() }.buttonStyle(.pill)
                 Spacer()
             }
+        }
+    }
+
+    private func runTypingTest() {
+        guard AccessibilityPermission.isTrusted(promptIfNeeded: false) else {
+            typingTest = "Allow Accessibility below first. Without it nothing can type."
+            return
+        }
+        typingTest = "Click into a text box in another app now…"
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Bundle.main.bundleIdentifier {
+                typingTest = "TapDeck was still in front, so nothing was typed. Try again and click into another app."
+                return
+            }
+            let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "the app in front"
+            KeyTyper.enqueue(LiveTypist.Edit(insert: "TapDeck typing works. "))
+            typingTest = "Typed a test sentence into \(app). If you do not see it there, typing does not work in that app. Tell me which app."
         }
     }
 

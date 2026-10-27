@@ -16,10 +16,17 @@ final class DictationController: ObservableObject {
     /// Microphone loudness from 0 to 1, for the meter.
     @Published private(set) var level = 0.0
 
+    /// What the pill says about where the words are going, for example "Typing into Notes".
+    @Published private(set) var typingNote = ""
+
     /// Told when a session ends by itself (the safety stop), so the person still sees the result.
     var onMessage: ((String) -> Void)?
 
     private var session = DictationSession()
+    private var typist = LiveTypist()
+    /// The app the words are typed into: the one in front when dictation started.
+    private var typingTarget: String?
+    private var typingAllowed = false
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -84,6 +91,7 @@ final class DictationController: ObservableObject {
         request.addsPunctuation = true
         self.request = request
         transcript = ""
+        prepareTyping()
 
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
@@ -114,8 +122,44 @@ final class DictationController: ObservableObject {
     }
 
     private func heard(text: String?, done: Bool) {
-        if let text { transcript = text }
+        if let text {
+            transcript = text
+            typeLive(text)
+        }
         if done { resumeWaiter() }
+    }
+
+    // MARK: Typing into the app in front
+
+    private static func frontBundleID() -> String? {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
+    private func prepareTyping() {
+        typist = LiveTypist()
+        let front = NSWorkspace.shared.frontmostApplication
+        typingTarget = front?.bundleIdentifier
+        if !AccessibilityPermission.isTrusted(promptIfNeeded: false) {
+            typingAllowed = false
+            typingNote = "Not typing: allow Accessibility in Setup. The words will be copied instead"
+        } else if front?.bundleIdentifier == Bundle.main.bundleIdentifier {
+            typingAllowed = false
+            typingNote = "Not typing: TapDeck itself is in front. Click into another app's text box first"
+        } else {
+            typingAllowed = true
+            typingNote = "Typing into \(front?.localizedName ?? "the app in front")"
+        }
+    }
+
+    /// Types words that have stayed the same across two updates. Stops for good if the person switches apps.
+    private func typeLive(_ partial: String) {
+        guard session.isListening, typingAllowed else { return }
+        guard Self.frontBundleID() == typingTarget else {
+            typingAllowed = false
+            typingNote = "You switched apps, so typing stopped. The words will be copied at the end"
+            return
+        }
+        KeyTyper.enqueue(typist.update(partial: partial))
     }
 
     private func finish() async -> String {
@@ -134,10 +178,30 @@ final class DictationController: ObservableObject {
         }
 
         let text = DictationText.clean(transcript)
+        let stillInTarget = Self.frontBundleID() == typingTarget
+        let canType = typingAllowed && stillInTarget
+        let reason: String
+        if typingNote.hasPrefix("You switched") || (typingAllowed && !stillInTarget) {
+            reason = "You switched apps"
+        } else if typingNote.hasPrefix("Not typing: TapDeck") {
+            reason = "TapDeck was in front"
+        } else {
+            reason = "Accessibility is not allowed"
+        }
+        var message: String
+        if text.isEmpty {
+            message = "Nothing was heard"
+        } else if canType {
+            KeyTyper.enqueue(typist.finish(final: text))
+            await KeyTyper.flush()
+            let words = DictationText.wordCount(typist.typed)
+            message = "Typed \(words) \(words == 1 ? "word" : "words")"
+        } else {
+            message = TextFallback.copy(text, reason: reason)
+        }
         teardown()
         session.finished()
-        guard !text.isEmpty else { return "Nothing was heard" }
-        return await TextTyper.insert(text)
+        return message
     }
 
     private func resumeWaiter() {
@@ -154,6 +218,9 @@ final class DictationController: ObservableObject {
         engine.inputNode.removeTap(onBus: 0)
         isListening = false
         level = 0
+        typingAllowed = false
+        typingTarget = nil
+        typingNote = ""
         pill.hide()
     }
 

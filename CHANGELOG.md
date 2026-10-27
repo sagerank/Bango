@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.12.3
+## 0.13.0
+
+Dictation now types straight into the text box as you speak, like macOS dictation, and no longer uses the clipboard. **Compiled by CI, not yet seen on a Mac. The typing itself could not be tested here.**
+
+- The words appear in the text box of the app you were using while you speak. The pill is only a status display now. Double tap again to finish: the last words are typed and any small correction is made
+- The earlier clipboard approach is gone. It felt like a copy and paste tool, and it is replaced
+- Each character is sent as its own key press, which is what web-based and Electron apps (chat and AI apps) need. Earlier, whole words were sent in one piece and such apps dropped them
+- The recogniser keeps revising its last words, so only words that stayed the same across two updates are typed, and nothing is ever deleted while you are speaking. At the end the text is made to match the final transcript, deleting at most 24 characters of what TapDeck itself typed
+- Safe stops: if you switch to another app, typing stops and the rest is put on the clipboard with a message. If TapDeck itself is in front, or Accessibility is off, nothing is typed and the words go to the clipboard, so they are never lost. This is the only time the clipboard is used
+- The pill says where the words are going, for example "Typing into Notes"
+- New in Setup: "Check that dictation can type". Press it, click into any text box within 3 seconds, and TapDeck types a sentence there, so you can see at once whether typing works in a given app
+- 7 new tests (188 in total) for what is typed and when: stable words only, never deleting while listening, the field always ending equal to the final text, a bounded correction, and nothing typed when nothing was heard
+
+## 0.12.3 (replaced the same day by 0.13.0, do not use)
 
 Dictation heard you and showed the words in the pill, but they did not arrive in the text box. **Compiled by CI, not yet seen on a Mac.**
 

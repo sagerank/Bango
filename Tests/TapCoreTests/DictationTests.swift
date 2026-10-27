@@ -111,3 +111,75 @@ final class DictationPlanTests: XCTestCase {
         XCTAssertEqual(FeedbackKind.classify(actionId: "dictation-toggle", parameter: "", summary: "Pasted 12 words"), .dictation(listening: false))
     }
 }
+
+final class LiveTypistTests: XCTestCase {
+    private func run(_ partials: [String], final: String) -> (edits: [LiveTypist.Edit], typed: String) {
+        var typist = LiveTypist()
+        var edits: [LiveTypist.Edit] = []
+        var field = ""
+        func apply(_ e: LiveTypist.Edit) {
+            field.removeLast(min(e.backspaces, field.count))
+            field += e.insert
+            if !e.isEmpty { edits.append(e) }
+        }
+        for p in partials { apply(typist.update(partial: p)) }
+        apply(typist.finish(final: final))
+        return (edits, field)
+    }
+
+    func testWordsAppearOnlyOnceTheyAreStable() {
+        var typist = LiveTypist()
+        XCTAssertTrue(typist.update(partial: "hello").isEmpty)                  // first sight of anything
+        XCTAssertTrue(typist.update(partial: "hello wor").isEmpty)              // "hello" has no space after it yet
+        XCTAssertEqual(typist.update(partial: "hello world").insert, "hello ")  // "hello" stayed, "world" is still being said
+        XCTAssertTrue(typist.update(partial: "hello world how").isEmpty)        // "world" has no space after it yet either
+        XCTAssertEqual(typist.update(partial: "hello world how are").insert, "world ")
+    }
+
+    func testListeningNeverDeletesAnything() {
+        // The recogniser changes its mind about the last word: nothing already typed is touched.
+        let r = run(["the cat", "the cat sat", "the cap sat on", "the cap sat on a"], final: "the cap sat on a mat")
+        for edit in r.edits.dropLast() { XCTAssertEqual(edit.backspaces, 0) }
+        XCTAssertEqual(r.typed, "the cap sat on a mat")
+    }
+
+    func testFieldAlwaysEndsEqualToTheFinalText() {
+        let finals = ["hello world", "one two three four five", "it's 5 o'clock, café ☕ time"]
+        for final in finals {
+            let words = final.split(separator: " ").map(String.init)
+            let partials = (1...words.count).map { words.prefix($0).joined(separator: " ") }
+            XCTAssertEqual(run(partials, final: final).typed, final, final)
+        }
+    }
+
+    func testAnEarlierMistakeIsCorrectedByAFewBackspacesAtTheEnd() {
+        let r = run(["we went to the", "we went to the pier today"], final: "we went to the pier today")
+        XCTAssertEqual(r.typed, "we went to the pier today")
+        let withMistake = run(["send it to bob", "send it to bob now"], final: "send it to rob now")
+        XCTAssertEqual(withMistake.typed, "send it to rob now")
+        XCTAssertLessThanOrEqual(withMistake.edits.map { $0.backspaces }.max() ?? 0, LiveTypist.maxCorrection)
+    }
+
+    func testAHugeDisagreementDoesNotDeleteLongStretchesOfText() {
+        var typist = LiveTypist()
+        let long = (1...30).map { "word\($0)" }.joined(separator: " ")
+        _ = typist.update(partial: long)
+        _ = typist.update(partial: long + " extra")
+        let edit = typist.finish(final: "completely different sentence now " + long)
+        XCTAssertEqual(edit.backspaces, 0)
+    }
+
+    func testNothingHeardTypesNothing() {
+        var typist = LiveTypist()
+        XCTAssertTrue(typist.update(partial: "").isEmpty)
+        XCTAssertTrue(typist.finish(final: "   ").isEmpty)
+        XCTAssertEqual(typist.typed, "")
+    }
+
+    func testRepeatedIdenticalPartialsAddNothingNew() {
+        var typist = LiveTypist()
+        _ = typist.update(partial: "good morning everyone")
+        XCTAssertEqual(typist.update(partial: "good morning everyone").insert, "good morning ")
+        XCTAssertTrue(typist.update(partial: "good morning everyone").isEmpty)
+    }
+}

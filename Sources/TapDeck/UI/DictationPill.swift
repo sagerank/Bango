@@ -30,6 +30,12 @@ private struct DictationPillView: View {
                     Text("Listening").font(.callout.weight(.semibold)).foregroundStyle(Theme.text)
                     meter
                 }
+                if !controller.typingNote.isEmpty {
+                    Text(controller.typingNote)
+                        .font(.caption2)
+                        .foregroundStyle(controller.typingNote.hasPrefix("Typing") ? Theme.good : Theme.warning)
+                        .lineLimit(2)
+                }
                 Text(controller.transcript.isEmpty ? "Speak now. Double tap again to finish." : DictationText.tail(controller.transcript))
                     .font(.caption)
                     .foregroundStyle(controller.transcript.isEmpty ? Theme.secondary : Theme.text)
