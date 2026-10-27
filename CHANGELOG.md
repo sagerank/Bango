@@ -3,6 +3,7 @@
 ## 1.0.2
 
 - Permissions now have a guided wizard: one permission per screen (Accessibility, Screen Recording, Dictation, Open at login), what it is for, one button, and it moves on by itself once macOS says yes. It is the permissions step of the welcome tour, and a "Guided setup" button on the Setup page. The full list stays on Setup for anyone who wants it.
+- Branding: the sidebar header is the wordmark BANGO. with the tagline "Tweak with the banger.", and the hand icon is gone.
 - Fix: the macOS Accessibility dialog appeared four times. It is now shown at most once per launch.
 - **Not yet seen on a Mac.** If Accessibility is switched on in System Settings but Bango still says it is missing, remove Bango from the list with the minus button and add it again (the wizard says this after 15 seconds).
 

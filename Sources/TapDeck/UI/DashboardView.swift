@@ -98,16 +98,14 @@ struct DashboardView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
-                IconBadge(symbol: "hand.tap", size: 38)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Bango")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.text)
-                    Text("Tap your Mac")
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondary)
-                }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("BANGO.")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.text)
+                Text("Tweak with the banger.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondary)
             }
             .padding(.bottom, 22)
 
