@@ -6,6 +6,7 @@
 - The wizard covers every row of the Setup list (it also does Automation and the screenshot folder), so it and the list always agree. Guided setup opens by itself on the Setup page when Accessibility or Screen Recording is still off.
 - Fix: the olive keyboard focus ring around the selected sidebar item is off.
 - Fix: the Microphone and Speech step could wait forever (its button stayed greyed out) if macOS never answered. It now gives up after 40 seconds, says what to do, and opens the right System Settings page. The step also lists each permission with its own status, so you can see which one is holding it up.
+- Fix: after Screen Recording, the next step's button could stay greyed out for about 30 seconds (and then fix itself). The wizard now ends that wait when it moves on, and only greys a button while its own permission is being asked.
 - Branding: the sidebar header is the wordmark BANGO. with the tagline "Tweak with the banger.", and the hand icon is gone.
 - Fix: the macOS Accessibility dialog appeared four times. It is now shown at most once per launch.
 - **Not yet seen on a Mac.** If Accessibility is switched on in System Settings but Bango still says it is missing, remove Bango from the list with the minus button and add it again (the wizard says this after 15 seconds).

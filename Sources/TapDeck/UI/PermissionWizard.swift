@@ -176,9 +176,9 @@ struct PermissionWizard: View {
             HStack(spacing: 10) {
                 if !finished {
                     Button("Not now") { move(to: next(after: p)) }.buttonStyle(.pill)
-                    Button(p.buttonTitle) { allow(p) }
+                    Button(isWorking(p) ? "Waiting…" : p.buttonTitle) { allow(p) }
                         .buttonStyle(.pillPrimary)
-                        .disabled(center.isRunning)
+                        .disabled(isWorking(p))
                 } else {
                     Button("Continue") { move(to: next(after: p)) }.buttonStyle(.pillPrimary)
                 }
@@ -193,7 +193,7 @@ struct PermissionWizard: View {
                   systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Theme.good)
                 .font(.callout.weight(.medium))
-        } else if center.isRunning, center.current.map({ p.items.contains($0) }) ?? false {
+        } else if isWorking(p) {
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -223,7 +223,8 @@ struct PermissionWizard: View {
             }
             .frame(maxWidth: 300)
         }
-        if let note = center.note, !finished {
+        // The Screen Recording restart note belongs on that page, not on every page after it.
+        if let note = center.note, !finished, !(center.needsRestart && p != .screenRecording) {
             Text(note).font(.caption).foregroundStyle(Theme.warning)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
@@ -333,14 +334,26 @@ struct PermissionWizard: View {
         Page(rawValue: p.rawValue + 1) ?? .done
     }
 
+    /// True only while setup is busy with this page's own permissions.
+    private func isWorking(_ p: Page) -> Bool {
+        center.isRunning && (center.current.map { p.items.contains($0) } ?? false)
+    }
+
     private func move(to target: Page) {
         waitingSince = nil
+        // Screen Recording keeps waiting for a restart that will not come. Stop that wait so it cannot
+        // hold up the next page.
+        if center.isRunning { center.skipCurrent() }
         page = target
     }
 
     private func allow(_ p: Page) {
         waitingSince = Date()
         Task {
+            if center.isRunning {
+                center.skipCurrent()
+                for _ in 0..<10 where center.isRunning { try? await Task.sleep(nanoseconds: 300_000_000) }
+            }
             await center.setUp(p.items)
             await advanceIfDone()
         }
