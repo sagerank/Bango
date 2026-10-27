@@ -47,7 +47,7 @@ final class ConfigStore: ObservableObject {
         // the old folder untouched.
         let fm = FileManager.default
         if !fm.fileExists(atPath: directory.path) {
-            for previous in ["Bingo", "TapDeck"] {
+            for previous in ["TapDeck"] {
                 let old = base.appendingPathComponent(previous, isDirectory: true)
                 if fm.fileExists(atPath: old.path) {
                     try? fm.copyItem(at: old, to: directory)

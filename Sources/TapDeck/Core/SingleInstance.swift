@@ -18,7 +18,7 @@ enum SingleInstance {
     /// The app has had other names. Close a copy that is still running under an old identity, since two
     /// menu bar icons would fight over the motion sensor.
     static func closeLegacyApp() {
-        for id in ["app.tapdeck.TapDeck", "app.bingo.Bingo"] {
+        for id in ["app.tapdeck.TapDeck"] {
             close(NSRunningApplication.runningApplications(withBundleIdentifier: id))
         }
     }
