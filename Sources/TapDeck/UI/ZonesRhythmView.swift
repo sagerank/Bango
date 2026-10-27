@@ -28,11 +28,14 @@ struct ZonesRhythmView: View {
         }
         .sheet(isPresented: $showRhythmRecorder) {
             RhythmRecorderSheet { pattern in
-                newRhythmBinding = GestureBinding(
-                    key: GestureKey(taps: pattern.taps),
-                    rhythm: pattern,
-                    steps: [ActionStep(actionId: "none")]
-                )
+                // Opening the editor while the recorder is still closing makes macOS drop it, so wait a moment.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    newRhythmBinding = GestureBinding(
+                        key: GestureKey(taps: pattern.taps),
+                        rhythm: pattern,
+                        steps: [ActionStep(actionId: "none")]
+                    )
+                }
             }
             .environmentObject(store)
             .environmentObject(monitor)
@@ -51,6 +54,8 @@ struct ZonesRhythmView: View {
                 onDelete: nil
             )
             .environmentObject(store)
+            .environmentObject(monitor)
+            .environmentObject(engine)
         }
     }
 
@@ -111,6 +116,8 @@ struct ZonesRhythmView: View {
                 Button("Record a rhythm") { showRhythmRecorder = true }
                     .buttonStyle(.pillPrimary)
                     .disabled(!monitor.isMonitoring)
+                Text("This adds the rhythm to the current profile. To use a rhythm only in one app, open Gestures, and under that app choose Add a gesture, then Tap rhythm.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
                 Text("Rhythms use up to \(store.config.detector.maxTaps) taps. Long pauses make TapDeck wait a little longer before it decides.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
@@ -283,7 +290,7 @@ private struct ZoneWizard: View {
 
 // MARK: - Rhythm recorder
 
-private struct RhythmRecorderSheet: View {
+struct RhythmRecorderSheet: View {
     @EnvironmentObject private var store: ConfigStore
     @EnvironmentObject private var monitor: MotionMonitor
     @EnvironmentObject private var engine: Engine

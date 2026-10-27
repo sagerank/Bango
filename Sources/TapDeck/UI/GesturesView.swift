@@ -3,6 +3,12 @@ import SwiftUI
 import TapCore
 import UniformTypeIdentifiers
 
+/// Where a newly recorded rhythm goes: the profile itself, or one app's override.
+private struct RhythmTarget: Identifiable {
+    let id = UUID()
+    var overrideID: String?
+}
+
 private struct EditTarget: Identifiable {
     let id = UUID()
     var binding: GestureBinding
@@ -13,9 +19,12 @@ private struct EditTarget: Identifiable {
 
 struct GesturesView: View {
     @EnvironmentObject private var store: ConfigStore
+    @EnvironmentObject private var monitor: MotionMonitor
+    @EnvironmentObject private var engine: Engine
     let goToZones: () -> Void
 
     @State private var target: EditTarget?
+    @State private var rhythmFor: RhythmTarget?
 
     private var profile: Profile { store.config.activeProfile }
 
@@ -60,6 +69,24 @@ struct GesturesView: View {
                 onDelete: item.isNew ? nil : { delete(item.binding.id, overrideID: item.overrideID) }
             )
             .environmentObject(store)
+            .environmentObject(monitor)
+            .environmentObject(engine)
+        }
+        .sheet(item: $rhythmFor) { destination in
+            RhythmRecorderSheet { pattern in
+                // Opening the editor while the recorder is still closing makes macOS drop it, so wait a moment.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    let binding = GestureBinding(
+                        key: GestureKey(taps: pattern.taps),
+                        rhythm: pattern,
+                        steps: [ActionStep(actionId: "none")]
+                    )
+                    target = EditTarget(binding: binding, isNew: true, overrideID: destination.overrideID)
+                }
+            }
+            .environmentObject(store)
+            .environmentObject(monitor)
+            .environmentObject(engine)
         }
     }
 
@@ -114,7 +141,7 @@ struct GesturesView: View {
                 }
             }
             Divider()
-            Button("Tap rhythm…", action: goToZones)
+            Button("Tap rhythm…") { rhythmFor = RhythmTarget(overrideID: overrideID) }
         } label: {
             Label("Add a gesture", systemImage: "plus")
         }

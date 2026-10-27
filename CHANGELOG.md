@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.5
+
+Fixes for soft and hard taps, rhythms and per-app gestures, which were reported as not working. **The tap-matching logic is tested on real data. The screens are compiled by CI but not yet seen running by the author.**
+
+What was wrong, found by reading the code against the real recording:
+
+- Rhythms could not be given to an app. "Add a gesture, Tap rhythm" under an app only jumped to another page, and a recorded rhythm was always saved to the main profile. It now records inside the app you chose
+- After recording a rhythm the editor could fail to appear, because it opened while the recorder was still closing. It now opens after a short wait
+- Soft and hard used a guessed level of 0.15 g. On the real recording every tap measures 0.15 to 0.27 g, so everything would have counted as hard. Turning it on now runs a teach-in (five light taps, five firm taps) and sets the line between them, and refuses with the numbers if the two are too alike
+- The "How hard" picker was greyed out until a switch in Tuning was found. It is now always usable and offers the teach-in right there
+- The old calibration raised the sensitivity threshold to about 0.09 g, which would drop soft taps. Calibration now never raises it
+- A gesture set to soft, hard, left, right or top silently never fired while that detection was off, and the log said only "No action assigned". It now says what is missing and where to set it up
+- Tuning shows the measured strength of the last tap and whether it counts as soft or hard
+- Activity shows which app's own gesture fired ("Double tap in Safari")
+- 14 new tests (117 in total): teach-in maths, a rhythm learned from one real burst matching the other, a rhythm inside an app override, app override choice, and the setup hints
+
 ## 0.9.4
 
 Setup that cannot be missed, and a proper installer window. **Not yet seen running on a Mac by the author.**

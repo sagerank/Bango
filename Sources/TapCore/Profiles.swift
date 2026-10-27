@@ -136,13 +136,36 @@ public struct Profile: Codable, Equatable, Identifiable, Sendable {
 
     /// The binding to run for a gesture. The frontmost app's override wins, then the profile itself.
     public func resolve(_ gesture: RecognizedGesture, frontmostBundleID: String?) -> GestureBinding? {
+        resolution(for: gesture, frontmostBundleID: frontmostBundleID)?.binding
+    }
+
+    /// Like `resolve`, and also says which app's override decided it, so the activity log can show it.
+    public func resolution(
+        for gesture: RecognizedGesture, frontmostBundleID: String?
+    ) -> (binding: GestureBinding, appName: String?)? {
         if let bundleID = frontmostBundleID,
            let appOverride = appOverrides.first(where: { $0.id == bundleID }),
            let match = GestureBinding.best(in: appOverride.bindings, for: gesture)
         {
-            return match
+            return (match, appOverride.appName)
         }
-        return GestureBinding.best(in: bindings, for: gesture)
+        if let match = GestureBinding.best(in: bindings, for: gesture) {
+            return (match, nil)
+        }
+        return nil
+    }
+
+    /// When a gesture matched nothing, says whether that is because a soft/hard or left/right/top gesture exists
+    /// for this tap count but the detection it needs is switched off. Nil when that is not the reason.
+    public func missingSetupHint(for gesture: RecognizedGesture, strengthOn: Bool, zonesOn: Bool) -> String? {
+        let sameTaps = (bindings + appOverrides.flatMap { $0.bindings }).filter { $0.taps == gesture.taps }
+        if !strengthOn, sameTaps.contains(where: { $0.key.strength != .any }) {
+            return "A soft or hard gesture exists for \(gesture.taps) taps, but soft and hard detection is off. Teach it in Tuning."
+        }
+        if !zonesOn, sameTaps.contains(where: { $0.key.zone != .any }) {
+            return "A left, right or top gesture exists for \(gesture.taps) taps, but zones are not set up. Set them up in Zones & rhythm."
+        }
+        return nil
     }
 
     /// A copy with fresh identifiers, so both profiles can be edited independently.

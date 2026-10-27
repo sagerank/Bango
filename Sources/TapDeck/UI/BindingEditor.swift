@@ -6,7 +6,10 @@ struct BindingEditor: View {
     @EnvironmentObject private var store: ConfigStore
     @Environment(\.dismiss) private var dismiss
 
+    @EnvironmentObject private var monitor: MotionMonitor
+    @EnvironmentObject private var engine: Engine
     @State private var draft: GestureBinding
+    @State private var showStrengthSetup = false
     private let isNew: Bool
     /// Other bindings in the same list, used to warn about clashes.
     private let siblings: [GestureBinding]
@@ -95,12 +98,22 @@ struct BindingEditor: View {
                     ForEach(TapStrength.allCases, id: \.self) { s in Text(s.title).tag(s) }
                 }
                 .pickerStyle(.segmented)
-                .disabled(!hasStrength && draft.key.strength == .any)
                 if !hasStrength {
-                    Text("Soft and hard taps need the hard-tap level set in Tuning.")
-                        .font(.caption).foregroundStyle(Theme.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(draft.key.strength == .any
+                             ? "Soft and hard taps need a one-time teach-in: a few light taps and a few firm ones."
+                             : "This gesture will not fire until TapDeck has learned your soft and hard taps.")
+                            .font(.caption).foregroundStyle(draft.key.strength == .any ? Theme.secondary : Theme.warning)
+                        Button("Teach soft and hard taps…") { showStrengthSetup = true }.buttonStyle(.pill)
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $showStrengthSetup) {
+            CalibrationSheet(teachStrength: true)
+                .environmentObject(store)
+                .environmentObject(monitor)
+                .environmentObject(engine)
         }
     }
 

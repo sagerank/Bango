@@ -100,19 +100,32 @@ final class Engine: ObservableObject {
 
     private func handle(_ gesture: RecognizedGesture) {
         flashIcon(taps: gesture.taps)
-        let label = Describe.gesture(gesture)
+        let baseLabel = Describe.gesture(gesture)
 
         if practiceMode {
             for handler in practiceHandlers.values { handler(gesture) }
-            log(label, .practice)
+            log(baseLabel, .practice)
             return
         }
 
         let config = store.config
-        guard let binding = config.activeProfile.resolve(gesture, frontmostBundleID: frontmostBundleID) else {
-            log(label, .noBinding)
+        guard let resolved = config.activeProfile.resolution(for: gesture, frontmostBundleID: frontmostBundleID) else {
+            let hint = config.activeProfile.missingSetupHint(
+                for: gesture,
+                strengthOn: config.detector.hardPeak > 0,
+                zonesOn: config.zoneModel != nil
+            )
+            if let hint {
+                log(baseLabel, .blocked(hint))
+                onFeedback?(Feedback(symbol: "exclamationmark.triangle", title: baseLabel, detail: hint, isError: true))
+            } else {
+                log(baseLabel, .noBinding)
+            }
             return
         }
+        let binding = resolved.binding
+        // Say which app's own gesture decided, so a per-app setup can be checked in Activity.
+        let label = resolved.appName.map { "\(baseLabel) in \($0)" } ?? baseLabel
         let enabledSteps = binding.steps.filter { $0.enabled }
         guard !enabledSteps.isEmpty else {
             log(label, .noBinding)

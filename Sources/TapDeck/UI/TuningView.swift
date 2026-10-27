@@ -10,6 +10,7 @@ struct TuningView: View {
     @State private var lastGesture: RecognizedGesture?
     @State private var gestureCount = 0
     @State private var showCalibration = false
+    @State private var showStrengthSetup = false
 
     private var detector: DetectorConfig { store.config.detector }
 
@@ -34,6 +35,12 @@ struct TuningView: View {
         .onDisappear { engine.endPractice(token) }
         .sheet(isPresented: $showCalibration) {
             CalibrationSheet()
+                .environmentObject(store)
+                .environmentObject(monitor)
+                .environmentObject(engine)
+        }
+        .sheet(isPresented: $showStrengthSetup) {
+            CalibrationSheet(teachStrength: true)
                 .environmentObject(store)
                 .environmentObject(monitor)
                 .environmentObject(engine)
@@ -155,7 +162,12 @@ struct TuningView: View {
                 Toggle(isOn: Binding(
                     get: { detector.hardPeak > 0 },
                     set: { on in
-                        store.update { $0.detector.hardPeak = on ? 0.15 : 0 }
+                        if on {
+                            // A guess would be wrong: taps differ a lot between Macs and people. Measure instead.
+                            showStrengthSetup = true
+                        } else {
+                            store.update { $0.detector.hardPeak = 0 }
+                        }
                     }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -164,9 +176,24 @@ struct TuningView: View {
                             .font(.caption).foregroundStyle(Theme.secondary)
                     }
                 }
+
                 if detector.hardPeak > 0 {
-                    labeled("Hard tap level", detail: "Taps stronger than this count as hard. Calibrate to set it from your own taps.") {
-                        Slider(value: binding(\.hardPeak), in: 0.05...0.6)
+                    labeled("Hard tap level", detail: "Taps stronger than this count as hard.") {
+                        Slider(value: binding(\.hardPeak), in: 0.05...0.8)
+                    }
+                    Button("Teach it again…") { showStrengthSetup = true }.buttonStyle(.pill)
+                }
+
+                // What the last gesture measured, so the level can be set by eye.
+                HStack(spacing: 8) {
+                    Image(systemName: "waveform.path.ecg").foregroundStyle(Theme.accent)
+                    if let gesture = lastGesture {
+                        let label = StrengthCalibration.label(peak: gesture.peak, hardPeak: detector.hardPeak)
+                        Text("Last tap strength \(gesture.peak.formatted(.number.precision(.fractionLength(2)))) g"
+                             + (label.map { " · \($0.title.lowercased())" } ?? " · soft and hard are off"))
+                            .font(.callout.monospacedDigit()).foregroundStyle(Theme.text)
+                    } else {
+                        Text("Tap to see how strong it measures").font(.callout).foregroundStyle(Theme.secondary)
                     }
                 }
             }
@@ -224,6 +251,9 @@ struct TuningView: View {
 
 /// Measures a few normal and hard taps and picks settings that fit them.
 struct CalibrationSheet: View {
+    /// True when the sheet only teaches soft and hard taps and leaves sensitivity alone.
+    var teachStrength = false
+
     @EnvironmentObject private var store: ConfigStore
     @EnvironmentObject private var monitor: MotionMonitor
     @EnvironmentObject private var engine: Engine
@@ -242,7 +272,7 @@ struct CalibrationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            PageHeader(title: "Calibrate", subtitle: subtitle)
+            PageHeader(title: teachStrength ? "Teach soft and hard taps" : "Calibrate", subtitle: subtitle)
 
             Card {
                 VStack(alignment: .leading, spacing: 12) {
@@ -298,8 +328,14 @@ struct CalibrationSheet: View {
 
     private var instruction: String {
         switch stage {
-        case .normal: return "Tap your Mac the way you normally would, \(needed) times."
-        case .hard: return "Now tap noticeably harder, \(needed) times."
+        case .normal:
+            return teachStrength
+                ? "Tap as lightly as you can while TapDeck still notices, \(needed) times."
+                : "Tap your Mac the way you normally would, \(needed) times."
+        case .hard:
+            return teachStrength
+                ? "Now tap firmly, the way you would for a hard tap, \(needed) times."
+                : "Now tap noticeably harder, \(needed) times."
         case .done: return "Finished."
         }
     }
@@ -321,27 +357,27 @@ struct CalibrationSheet: View {
         }
     }
 
-    private func median(_ values: [Double]) -> Double {
-        let sorted = values.sorted()
-        return sorted[sorted.count / 2]
-    }
-
     private func finish() {
-        let normal = median(normalPeaks)
-        let hard = median(hardPeaks)
-        let threshold = min(max(normal * 0.45, 0.01), 0.1)
+        func g(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }
+        let soft = StrengthCalibration.median(normalPeaks)
+        let hard = StrengthCalibration.median(hardPeaks)
+        var text = "Measured about \(g(soft)) g for \(teachStrength ? "soft" : "normal") taps and \(g(hard)) g for hard taps. "
 
-        var text = "Sensitivity set so that taps like your normal ones are caught with room to spare."
-        var hardPeak = 0.0
-        if hard >= normal * 1.35 {
-            hardPeak = (normal * hard).squareRoot()
-            text += " Hard taps are told apart from soft ones."
-        } else {
-            text += " Your hard taps were not much stronger than your normal taps, so soft and hard stay off."
-        }
-        store.update {
-            $0.detector.threshold = threshold
-            $0.detector.hardPeak = hardPeak
+        switch StrengthCalibration.fit(soft: normalPeaks, hard: hardPeaks) {
+        case .success(let fit):
+            store.update {
+                $0.detector.hardPeak = fit.hardPeak
+                $0.detector.threshold = StrengthCalibration.suggestedThreshold(lightestMedian: fit.softMedian, current: $0.detector.threshold)
+            }
+            text += "The line between soft and hard is \(g(fit.hardPeak)) g. Soft and hard are on."
+        case .failure(.notDifferentEnough(let ratio)):
+            store.update {
+                $0.detector.hardPeak = 0
+                $0.detector.threshold = StrengthCalibration.suggestedThreshold(lightestMedian: soft, current: $0.detector.threshold)
+            }
+            text += "The hard taps were only \(g(ratio)) times stronger and TapDeck needs \(g(StrengthCalibration.minimumRatio)) times, so soft and hard stay off. Try a clearly lighter and a clearly firmer tap."
+        case .failure(.tooFewTaps):
+            text += "Too few taps were measured. Try again."
         }
         result = text
         stage = .done
