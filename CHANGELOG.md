@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.2
+
+Screen Recording still looped on "Allowed. Restart TapDeck". **Compiled by CI, not yet seen on a Mac.**
+
+- The word "Allowed" was wrong: TapDeck only knows that it asked, not what you did in System Settings. It now says "Asked, not confirmed" until macOS itself reports the permission after a restart
+- Cause of the loop: macOS shows its permission prompt only once for an entry. After a restart that still ended in "refused", pressing Allow asked again, got no prompt, and the row jumped back to "Restart". Now, when the permission is still refused after a restart, Allow first clears TapDeck's old Screen Recording entry (what a stale entry from an earlier build needs), then asks again and opens the right System Settings page
+- The row shows when this copy of TapDeck started, so you can tell whether a restart really happened. If the time did not change, it did not
+- Screen Recording turns green only when macOS reports it as allowed
+
 ## 0.12.1
 
 Setup kept asking for Automation, and Screen Recording said "Restart TapDeck" for ever. **Compiled by CI, not yet seen on a Mac.**

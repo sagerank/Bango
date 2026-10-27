@@ -197,7 +197,7 @@ final class PermissionCenter: ObservableObject {
         isRunning = false
         NSApp.activate(ignoringOtherApps: true)
         if needsRestart {
-            note = "Screen Recording is allowed. Restart TapDeck once so macOS applies it."
+            note = "Screen Recording was asked for. In System Settings, switch TapDeck on, then restart TapDeck once. macOS only applies it after a restart."
         }
     }
 
@@ -247,10 +247,18 @@ final class PermissionCenter: ObservableObject {
             _ = AccessibilityPermission.requestIfNeeded()
             _ = await waitFor(timeout: 120) { AccessibilityPermission.isTrusted(promptIfNeeded: false) }
         case .screenRecording:
+            // macOS shows its prompt only once per entry. If it already refused in an earlier run, asking again
+            // does nothing, which is how this row used to loop. So clear the old entry first, then ask afresh.
+            if screenRecordingStillRefused {
+                let id = Bundle.main.bundleIdentifier ?? "app.tapdeck.TapDeck"
+                _ = try? await ProcessRunner.run("/usr/bin/tccutil", ["reset", "ScreenCapture", id], timeout: 10)
+                defaults.removeObject(forKey: screenRequestedKey)
+            }
             defaults.set(Date().timeIntervalSince1970, forKey: screenRequestedKey)
             ScreenCapture.requestPermission()
+            Self.openSettings("Privacy_ScreenCapture")
             // macOS usually only reports this after a restart, so a short wait is enough.
-            _ = await waitFor(timeout: 45) { ScreenCapture.hasPermission }
+            _ = await waitFor(timeout: 30) { ScreenCapture.hasPermission }
         case .loginItem:
             do {
                 try LaunchAtLogin.setEnabled(true)

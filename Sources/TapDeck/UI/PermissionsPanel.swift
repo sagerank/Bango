@@ -67,6 +67,12 @@ struct PermissionsPanel: View {
         }
     }
 
+    /// When this copy of TapDeck started, so a restart can be told apart from no restart.
+    private static let startTime: String = {
+        let start = NSRunningApplication.current.launchDate ?? Date(timeIntervalSinceNow: -ProcessInfo.processInfo.systemUptime)
+        return start.formatted(date: .omitted, time: .standard)
+    }()
+
     private func row(_ item: SetupItem) -> some View {
         let state = center.state(item)
         let active = center.current == item
@@ -84,14 +90,14 @@ struct PermissionsPanel: View {
                     Text("Not checked yet. Press Allow to ask macOS.").font(.caption2).foregroundStyle(Theme.secondary)
                 }
                 if item == .screenRecording && center.screenRecordingStillRefused {
-                    Text("Still not allowed after a restart. If TapDeck is switched on in System Settings, Screen Recording, it is an old entry from an earlier build. Remove it with the minus button, add TapDeck again with the plus button, then restart TapDeck.")
+                    Text("Still not allowed after a restart. TapDeck is probably an old entry from an earlier build, which looks switched on but does not count. Press Allow: TapDeck clears the old entry and asks again. Then switch it on and restart TapDeck.")
                         .font(.caption2).foregroundStyle(Theme.warning)
-                    Button("Open Screen Recording settings") {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") { NSWorkspace.shared.open(url) }
-                    }.buttonStyle(.quiet)
                 }
                 if state == .needsRestart {
-                    Text("Allowed. Restart TapDeck to finish.").font(.caption2).foregroundStyle(Theme.warning)
+                    Text("Asked, not confirmed. If you switched TapDeck on in System Settings, restart TapDeck.")
+                        .font(.caption2).foregroundStyle(Theme.warning)
+                    Text("This copy of TapDeck started at \(Self.startTime). If that time did not change after you restarted, the restart did not happen: quit TapDeck from the menu bar and open it again.")
+                        .font(.caption2).foregroundStyle(Theme.secondary)
                 } else if state == .needsApproval {
                     Text("Switch TapDeck on in System Settings, Login Items.").font(.caption2).foregroundStyle(Theme.warning)
                 }
