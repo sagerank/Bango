@@ -68,9 +68,11 @@ struct DashboardView: View {
                     window.orderOut(nil)
                 } else {
                     if needsSetup {
-                        onboardingStartsAtPermissions = done
+                        // First run gets the welcome tour. Anyone else is only taken to the Setup page,
+                        // once per build, and nothing is requested until they press a button.
                         selection = .setup
-                        showOnboarding = true
+                        if !done { showOnboarding = true }
+                        permissions.markSetupSeen()
                     }
                     model.showMainWindow()
                 }

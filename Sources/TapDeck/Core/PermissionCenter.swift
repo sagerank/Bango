@@ -18,6 +18,8 @@ final class PermissionCenter: ObservableObject {
         /// Login item registered, waiting for the switch in System Settings.
         case needsApproval
         case unavailable
+        /// Not asked yet. Checking Automation starts System Events and Finder, so it only happens when the person asks.
+        case unknown
     }
 
     @Published private(set) var status: [SetupItem: Status] = [:]
@@ -59,10 +61,12 @@ final class PermissionCenter: ObservableObject {
         return version + "-" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0")
     }
 
-    func state(_ item: SetupItem) -> Status { status[item] ?? .missing }
+    func state(_ item: SetupItem) -> Status {
+        status[item] ?? ((item == .systemEvents || item == .finder) ? .unknown : .missing)
+    }
 
     var allDone: Bool {
-        SetupItem.allCases.allSatisfy { [.granted, .unavailable].contains(state($0)) }
+        SetupItem.allCases.allSatisfy { [.granted, .unavailable, .unknown].contains(state($0)) }
     }
 
     var needsRestart: Bool {
@@ -123,7 +127,7 @@ final class PermissionCenter: ObservableObject {
         guard !isRunning else { return }
         isRunning = true
         note = nil
-        await refreshAll()
+        refreshQuick()
         for item in PermissionPlan.order where items.contains(item) {
             skipRequested = false
             guard state(item) != .granted, state(item) != .unavailable else { continue }
@@ -132,7 +136,7 @@ final class PermissionCenter: ObservableObject {
             refreshQuick()
         }
         current = nil
-        await refreshAll()
+        refreshQuick()
         isRunning = false
         NSApp.activate(ignoringOtherApps: true)
         if needsRestart {
@@ -146,12 +150,14 @@ final class PermissionCenter: ObservableObject {
         switch item {
         case .systemEvents:
             let result = await AutomationPermission.requestIfNeeded(for: AutomationPermission.systemEvents)
+            status[.systemEvents] = Self.map(result)
             if result == .denied {
                 note = "Automation was refused earlier. Switch System Events on under Privacy & Security, Automation."
                 AutomationPermission.openSystemSettings()
             }
         case .finder:
             let result = await AutomationPermission.requestIfNeeded(for: AutomationPermission.finder)
+            status[.finder] = Self.map(result)
             if result == .denied {
                 note = "Automation was refused earlier. Switch Finder on under Privacy & Security, Automation."
                 AutomationPermission.openSystemSettings()

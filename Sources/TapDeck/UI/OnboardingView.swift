@@ -70,8 +70,8 @@ struct OnboardingView: View {
             }
         case .permissions:
             VStack(alignment: .leading, spacing: 14) {
-                PageHeader(title: "Allow everything once", subtitle: "Press the button and TapDeck asks macOS for every permission its actions use, one after another. You can skip any of them.")
-                PermissionsPanel(autoStart: true)
+                PageHeader(title: "What TapDeck needs", subtitle: "Each line shows whether it is allowed. Press Allow on the ones you want. You can skip any of them and come back to Setup later.")
+                PermissionsPanel()
             }
         case .tryIt:
             VStack(alignment: .leading, spacing: 16) {

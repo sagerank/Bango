@@ -8,6 +8,10 @@ struct SetupView: View {
     let showTour: () -> Void
 
     var body: some View {
+        content.onAppear { center.markSetupSeen() }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 20) {
             PageHeader(
                 title: "Setup",

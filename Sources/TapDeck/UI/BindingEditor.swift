@@ -57,7 +57,7 @@ struct BindingEditor: View {
             Divider().overlay(Theme.stroke)
             footer
         }
-        .frame(width: 560, height: 640)
+        .frame(minWidth: 520, idealWidth: 560, maxWidth: 640, minHeight: 440, idealHeight: 600, maxHeight: 760)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }
@@ -275,34 +275,89 @@ private struct StepRow: View {
     }
 }
 
-/// Grouped menu of every action in the catalog.
+/// Every action in the catalog, in a searchable list. A popover rather than nested menus, because nested
+/// menus inside a sheet could not be clicked on some Macs.
 struct ActionMenu: View {
     @Binding var actionId: String
     @Binding var parameter: String
+    @State private var open = false
 
     private var current: ActionDefinition? { ActionCatalog.definition(for: actionId) }
 
     var body: some View {
-        Menu {
-            ForEach(ActionCategory.allCases, id: \.self) { category in
-                Menu(category.title) {
-                    ForEach(ActionCatalog.actions(in: category)) { definition in
-                        Button {
-                            if definition.parameter == nil { parameter = "" }
-                            actionId = definition.id
-                        } label: {
-                            Label(definition.name, systemImage: definition.symbol)
-                        }
-                    }
-                }
-            }
-        } label: {
+        Button { open.toggle() } label: {
             HStack(spacing: 8) {
                 Image(systemName: current?.symbol ?? "questionmark")
                 Text(current?.name ?? "Unknown action")
+                Image(systemName: "chevron.up.chevron.down").font(.caption2)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.accent)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            ActionPicker(selected: actionId) { definition in
+                if definition.parameter == nil { parameter = "" }
+                actionId = definition.id
+                open = false
             }
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
+    }
+}
+
+private struct ActionPicker: View {
+    let selected: String
+    let choose: (ActionDefinition) -> Void
+    @State private var query = ""
+
+    private func matches(_ definition: ActionDefinition) -> Bool {
+        query.isEmpty
+            || definition.name.localizedCaseInsensitiveContains(query)
+            || definition.category.title.localizedCaseInsensitiveContains(query)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TextField("Search actions", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .padding(10)
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2, pinnedViews: []) {
+                    ForEach(ActionCategory.allCases, id: \.self) { category in
+                        let items = ActionCatalog.actions(in: category).filter(matches)
+                        if !items.isEmpty {
+                            Text(category.title.uppercased())
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.top, 10)
+                                .padding(.bottom, 2)
+                            ForEach(items) { definition in
+                                Button { choose(definition) } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: definition.symbol).frame(width: 20)
+                                        Text(definition.name)
+                                        Spacer()
+                                        if definition.id == selected {
+                                            Image(systemName: "checkmark").foregroundStyle(Theme.accent)
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(Theme.text)
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 8)
+            }
+        }
+        .frame(width: 360, height: 420)
+        .background(Theme.surface)
+        .preferredColorScheme(.dark)
     }
 }

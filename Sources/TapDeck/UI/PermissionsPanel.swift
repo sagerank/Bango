@@ -6,9 +6,6 @@ struct PermissionsPanel: View {
     @EnvironmentObject private var store: ConfigStore
     @ObservedObject private var center = PermissionCenter.shared
     @State private var confirmReset = false
-    @State private var didAutoStart = false
-    /// Start asking as soon as the panel appears, instead of waiting for the button.
-    var autoStart = false
 
     private var usage: [SetupItem: [String]] { PermissionPlan.usage(in: store.config) }
 
@@ -34,11 +31,11 @@ struct PermissionsPanel: View {
                 } else if center.allDone {
                     Label("Everything is allowed", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.good)
                 } else {
-                    Button("Set up everything") { Task { await center.setUp() } }.buttonStyle(.pillPrimary)
+                    Button("Allow all, one by one") { Task { await center.setUp() } }.buttonStyle(.pill)
                 }
                 Spacer()
                 Menu("More") {
-                    Button("Check again") { Task { await center.refreshAll() } }
+                    Button("Check Automation too") { Task { await center.refreshAll() } }
                     Button("Clear TapDeck's permissions…") { confirmReset = true }
                 }
                 .menuStyle(.borderlessButton).fixedSize()
@@ -47,16 +44,12 @@ struct PermissionsPanel: View {
             if let note = center.note {
                 Text(note).font(.callout).foregroundStyle(Theme.warning)
             }
-            Text("macOS never lets an app switch these on by itself, so each opens its own prompt or Settings page. TapDeck asks in the order that needs the fewest trips and notices the moment you allow each one.")
+            Text("Nothing is requested until you press a button. macOS never lets an app switch these on by itself, so each opens its own prompt or Settings page, and the status here updates when you allow it.")
                 .font(.caption).foregroundStyle(Theme.secondary)
         }
         .task {
-            await center.refreshAll()
-            if autoStart, !didAutoStart, !center.isRunning, !center.allDone {
-                didAutoStart = true
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                await center.setUp()
-            }
+            // Only cheap checks run by themselves. Nothing is requested until a button is pressed.
+            center.refreshQuick()
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 center.refreshQuick()
@@ -82,6 +75,9 @@ struct PermissionsPanel: View {
                     Text("Used by: " + names.prefix(4).joined(separator: ", ") + (names.count > 4 ? " and \(names.count - 4) more" : ""))
                         .font(.caption2).foregroundStyle(Theme.accent)
                 }
+                if state == .unknown {
+                    Text("Not checked yet. Press Allow to ask macOS.").font(.caption2).foregroundStyle(Theme.secondary)
+                }
                 if state == .needsRestart {
                     Text("Allowed. Restart TapDeck to finish.").font(.caption2).foregroundStyle(Theme.warning)
                 } else if state == .needsApproval {
@@ -89,8 +85,8 @@ struct PermissionsPanel: View {
                 }
             }
             Spacer()
-            if state == .missing, !center.isRunning {
-                Button("Allow") { Task { await center.setUp([item]) } }.buttonStyle(.pill)
+            if (state == .missing || state == .unknown), !center.isRunning {
+                Button(state == .unknown ? "Allow…" : "Allow") { Task { await center.setUp([item]) } }.buttonStyle(.pill)
             }
         }
         .padding(12)
@@ -112,7 +108,7 @@ struct PermissionsPanel: View {
                 Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(Theme.warning)
             case .unavailable:
                 Image(systemName: "minus.circle").foregroundStyle(Theme.secondary)
-            case .missing:
+            case .missing, .unknown:
                 Image(systemName: "circle.dashed").foregroundStyle(Theme.secondary)
             }
         }

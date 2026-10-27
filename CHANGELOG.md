@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.7
+
+The action dropdown could not be clicked, and setup acted on its own. **Compiled by CI, not yet seen on a Mac by the author.**
+
+- The action picker in the gesture editor is now a searchable list in a popover. The nested menus it used could not be clicked inside the editor on some Macs. The editor also fits small windows now
+- Setup never starts by itself. It is a list showing each permission and whether it is allowed, with an Allow button on each line. Nothing is requested until a button is pressed. "Allow all, one by one" is there for people who want it, and is never run automatically
+- The welcome tour opens by itself on first run only. Anyone else who lost permissions, for example after a new build, is taken to the Setup page once per build, with no pop-up
+- The Setup page no longer starts System Events and Finder in the background to check Automation. Those two show "Not checked yet" until you press Allow or Check Automation too
+- Cause of setup "running several times": two copies of the app were running (fixed in 0.9.6) and the permissions step started requesting as soon as it appeared
+
 ## 0.9.6
 
 Two menu bar icons, no way to quit, and missing from the Force Quit list. **The cause is inferred from screenshots, not reproduced; the fix is compiled by CI but not yet seen on a Mac.**
