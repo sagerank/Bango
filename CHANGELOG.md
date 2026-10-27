@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.9
+
+Four copies of the app running at once, four sets of permission prompts, four menu bar icons, and Quit closing only one. **Compiled by CI, not yet seen on a Mac by the author.**
+
+- Builds before 0.9.6 had no protection, so every launch added another hidden copy. From 0.9.6 a new copy closes older ones. 0.9.9 makes that safe when two copies start in the same instant: only the older one is ever closed, so they cannot close each other, and the newest always survives
+- Quit TapDeck in the menu bar window now closes every copy, not only the one you clicked in, so one press really quits
+- The Restart TapDeck button waits until this copy has really exited before opening a new one, and opens nothing if this copy does not quit. Before, it started the new copy first, which could itself leave two running
+- 4 new tests (127 in total) for which copy is closed, including four copies and two starting together
+
 ## 0.9.8
 
 A guided way to learn the taps, so the app says what to do instead of naming gestures. **Compiled by CI, not yet seen on a Mac by the author.**

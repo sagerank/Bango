@@ -88,3 +88,36 @@ final class SetupPolicyTests: XCTestCase {
         XCTAssertFalse(show(last: "9-0.9.3", ax: false, screen: false))
     }
 }
+
+final class InstancePolicyTests: XCTestCase {
+    typealias Copy = InstancePolicy.Copy
+
+    func testOnlyOlderCopiesAreClosed() {
+        let me = Copy(pid: 300, launched: 100)
+        let others = [Copy(pid: 100, launched: 10), Copy(pid: 200, launched: 50), Copy(pid: 400, launched: 200)]
+        XCTAssertEqual(InstancePolicy.copiesToClose(me: me, others: others).map { $0.pid }, [100, 200])
+    }
+
+    func testTwoCopiesStartingTogetherNeverCloseEachOther() {
+        let a = Copy(pid: 500, launched: 100)
+        let b = Copy(pid: 501, launched: 100)
+        let closedByA = InstancePolicy.copiesToClose(me: a, others: [b])
+        let closedByB = InstancePolicy.copiesToClose(me: b, others: [a])
+        XCTAssertEqual(closedByA.count + closedByB.count, 1)
+        XCTAssertEqual(closedByB.map { $0.pid }, [500])
+    }
+
+    func testFourCopiesLeaveExactlyTheNewestRunning() {
+        let copies = (0..<4).map { Copy(pid: Int32(1000 + $0), launched: Double($0)) }
+        var survivors = copies
+        for me in copies {
+            let closed = Set(InstancePolicy.copiesToClose(me: me, others: copies).map { $0.pid })
+            survivors.removeAll { closed.contains($0.pid) }
+        }
+        XCTAssertEqual(survivors.map { $0.pid }, [1003])
+    }
+
+    func testNothingToCloseWhenAlone() {
+        XCTAssertTrue(InstancePolicy.copiesToClose(me: Copy(pid: 1, launched: 1), others: []).isEmpty)
+    }
+}

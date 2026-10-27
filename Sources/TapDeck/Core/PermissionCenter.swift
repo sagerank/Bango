@@ -215,12 +215,16 @@ final class PermissionCenter: ObservableObject {
         await refreshAll()
     }
 
-    /// Starts a fresh copy of the app and quits this one.
+    /// Quits this copy and starts a fresh one once it has really gone. The helper waits for this process to
+    /// exit, then opens the app without `-n`, so a restart can never leave two copies running. If this copy
+    /// does not quit within ten seconds, nothing is launched.
     func restartApp() {
         let path = Bundle.main.bundlePath
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let script = "i=0; while kill -0 \"$1\" 2>/dev/null; do i=$((i+1)); [ $i -gt 50 ] && exit 0; sleep 0.2; done; /usr/bin/open \"$2\""
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "sleep 1; /usr/bin/open -n \"$0\"", path]
+        process.arguments = ["-c", script, "sh", String(pid), path]
         try? process.run()
         NSApp.terminate(nil)
     }

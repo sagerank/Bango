@@ -97,6 +97,7 @@ final class AppModel: ObservableObject {
 
     func quit() {
         store.flush()
+        SingleInstance.closeAllOtherInstances()
         NSApplication.shared.terminate(nil)
     }
 }

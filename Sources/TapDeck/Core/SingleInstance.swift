@@ -1,22 +1,45 @@
 import AppKit
+import TapCore
 
 /// Makes sure only one TapDeck runs. A menu bar app has no Dock icon, so a copy left over from an earlier
-/// install is easy to miss, and two copies mean two menu bar icons, two fights over the motion sensor and
-/// a Quit button that only ever closes one of them. The newest copy wins: older ones are asked to quit,
-/// then forced to if they do not.
+/// install is easy to miss, and every extra copy means another menu bar icon, another round of permission
+/// prompts, a fight over the motion sensor and a Quit button that closes only the copy it was clicked in.
 enum SingleInstance {
-    static func replaceOlderInstances() {
-        guard let id = Bundle.main.bundleIdentifier else { return } // `swift run` has none
-        let me = ProcessInfo.processInfo.processIdentifier
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: id)
-            .filter { $0.processIdentifier != me }
-        guard !others.isEmpty else { return }
+    private static func copy(_ app: NSRunningApplication) -> InstancePolicy.Copy {
+        InstancePolicy.Copy(pid: app.processIdentifier, launched: app.launchDate?.timeIntervalSince1970 ?? 0)
+    }
 
-        for app in others { app.terminate() }
+    private static func otherCopies() -> [NSRunningApplication] {
+        guard let id = Bundle.main.bundleIdentifier else { return [] } // `swift run` has none
+        let me = ProcessInfo.processInfo.processIdentifier
+        return NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { $0.processIdentifier != me }
+    }
+
+    /// At launch: close the older copies. A copy that is newer than this one will close this one, so two
+    /// copies started together cannot close each other.
+    static func replaceOlderInstances() {
+        let others = otherCopies()
+        guard !others.isEmpty else { return }
+        let me = InstancePolicy.Copy(
+            pid: ProcessInfo.processInfo.processIdentifier,
+            launched: NSRunningApplication.current.launchDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+        )
+        let doomed = Set(InstancePolicy.copiesToClose(me: me, others: others.map(copy)).map { $0.pid })
+        close(others.filter { doomed.contains($0.processIdentifier) })
+    }
+
+    /// For Quit: close every other copy too, so one press really quits TapDeck.
+    static func closeAllOtherInstances() {
+        close(otherCopies())
+    }
+
+    private static func close(_ apps: [NSRunningApplication]) {
+        guard !apps.isEmpty else { return }
+        for app in apps { app.terminate() }
         let deadline = Date().addingTimeInterval(3)
-        while Date() < deadline, others.contains(where: { !$0.isTerminated }) {
+        while Date() < deadline, apps.contains(where: { !$0.isTerminated }) {
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         }
-        for app in others where !app.isTerminated { app.forceTerminate() }
+        for app in apps where !app.isTerminated { app.forceTerminate() }
     }
 }
