@@ -31,7 +31,7 @@ enum KeyTyper {
                 event?.flags = []
                 event?.post(tap: .cghidEventTap)
             }
-            usleep(3_000)
+            usleep(2_000)
         }
         for character in edit.insert {
             let units = Array(String(character).utf16)
@@ -43,7 +43,7 @@ enum KeyTyper {
                 }
                 event?.post(tap: .cghidEventTap)
             }
-            usleep(3_000)
+            usleep(2_000)
         }
     }
 }

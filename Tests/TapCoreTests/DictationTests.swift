@@ -113,7 +113,8 @@ final class DictationPlanTests: XCTestCase {
 }
 
 final class LiveTypistTests: XCTestCase {
-    private func run(_ partials: [String], final: String) -> (edits: [LiveTypist.Edit], typed: String) {
+    /// Plays partials and the final text against a pretend text box and returns what ended up in it.
+    private func run(_ partials: [String], final: String, settleAfter: Set<Int> = []) -> (edits: [LiveTypist.Edit], field: String, typist: LiveTypist) {
         var typist = LiveTypist()
         var edits: [LiveTypist.Edit] = []
         var field = ""
@@ -122,56 +123,87 @@ final class LiveTypistTests: XCTestCase {
             field += e.insert
             if !e.isEmpty { edits.append(e) }
         }
-        for p in partials { apply(typist.update(partial: p)) }
+        for (index, p) in partials.enumerated() {
+            apply(typist.update(partial: p))
+            if settleAfter.contains(index) { apply(typist.settle()) }
+        }
         apply(typist.finish(final: final))
-        return (edits, field)
+        return (edits, field, typist)
     }
 
     func testWordsAppearOnlyOnceTheyAreStable() {
         var typist = LiveTypist()
-        XCTAssertTrue(typist.update(partial: "hello").isEmpty)                  // first sight of anything
-        XCTAssertTrue(typist.update(partial: "hello wor").isEmpty)              // "hello" has no space after it yet
-        XCTAssertEqual(typist.update(partial: "hello world").insert, "hello ")  // "hello" stayed, "world" is still being said
-        XCTAssertTrue(typist.update(partial: "hello world how").isEmpty)        // "world" has no space after it yet either
+        XCTAssertTrue(typist.update(partial: "hello").isEmpty)
+        XCTAssertTrue(typist.update(partial: "hello wor").isEmpty)
+        XCTAssertEqual(typist.update(partial: "hello world").insert, "hello ")
+        XCTAssertTrue(typist.update(partial: "hello world how").isEmpty)
         XCTAssertEqual(typist.update(partial: "hello world how are").insert, "world ")
     }
 
-    func testListeningNeverDeletesAnything() {
-        // The recogniser changes its mind about the last word: nothing already typed is touched.
-        let r = run(["the cat", "the cat sat", "the cap sat on", "the cap sat on a"], final: "the cap sat on a mat")
-        for edit in r.edits.dropLast() { XCTAssertEqual(edit.backspaces, 0) }
-        XCTAssertEqual(r.typed, "the cap sat on a mat")
+    func testAPauseTypesTheLastWordWithoutWaitingForTheNextOne() {
+        var typist = LiveTypist()
+        _ = typist.update(partial: "send the report")
+        XCTAssertEqual(typist.update(partial: "send the report").insert, "send the ")
+        XCTAssertEqual(typist.settle().insert, "report")           // paused: no trailing space invented
+        XCTAssertTrue(typist.settle().isEmpty)                      // nothing new
+        XCTAssertTrue(typist.update(partial: "send the report today now").isEmpty)        // "today" is not confirmed yet
+        XCTAssertEqual(typist.update(partial: "send the report today now soon").insert, " today ")
     }
 
-    func testFieldAlwaysEndsEqualToTheFinalText() {
-        let finals = ["hello world", "one two three four five", "it's 5 o'clock, café ☕ time"]
+    func testListeningNeverDeletesAnything() {
+        let r = run(["the cat", "the cat sat", "the cap sat on", "the cap sat on a"], final: "the cap sat on a mat", settleAfter: [1, 3])
+        for edit in r.edits.dropLast() { XCTAssertEqual(edit.backspaces, 0) }
+        XCTAssertEqual(r.field, "the cap sat on a mat")
+    }
+
+    func testTheFieldAlwaysEndsExactlyEqualToTheFinalText() {
+        let finals = ["hello world", "one two three four five", "it's 5 o'clock, café ☕ time", "Hello world. How are you doing today, my friend? I hope all is well."]
         for final in finals {
             let words = final.split(separator: " ").map(String.init)
-            let partials = (1...words.count).map { words.prefix($0).joined(separator: " ") }
-            XCTAssertEqual(run(partials, final: final).typed, final, final)
+            let partials = (1...words.count).map { words.prefix($0).joined(separator: " ").lowercased() }
+            XCTAssertEqual(run(partials, final: final).field, final, final)
+            XCTAssertEqual(run(partials, final: final, settleAfter: Set(0..<partials.count)).field, final, final)
         }
     }
 
-    func testAnEarlierMistakeIsCorrectedByAFewBackspacesAtTheEnd() {
-        let r = run(["we went to the", "we went to the pier today"], final: "we went to the pier today")
-        XCTAssertEqual(r.typed, "we went to the pier today")
-        let withMistake = run(["send it to bob", "send it to bob now"], final: "send it to rob now")
-        XCTAssertEqual(withMistake.typed, "send it to rob now")
-        XCTAssertLessThanOrEqual(withMistake.edits.map { $0.backspaces }.max() ?? 0, LiveTypist.maxCorrection)
+    func testPunctuationAndCapitalsAddedLaterAreFixedAtTheEnd() {
+        // The bug that was reported: the draft had no punctuation, the final had, and the text came out scrambled.
+        let partials = ["hello", "hello world", "hello world how are", "hello world how are you doing", "hello world how are you doing today my", "hello world how are you doing today my friend i hope"]
+        let final = "Hello world. How are you doing today, my friend? I hope all is well."
+        let r = run(partials, final: final)
+        XCTAssertEqual(r.field, final)
+        XCTAssertFalse(r.typist.diverged)
     }
 
-    func testAHugeDisagreementDoesNotDeleteLongStretchesOfText() {
+    func testAMistakeInTheMiddleIsCorrectedFromThereOnly() {
+        let r = run(["send it to bob", "send it to bob now please"], final: "send it to rob now please")
+        XCTAssertEqual(r.field, "send it to rob now please")
+        // Only the words from the mistake onwards are deleted, never the start of the sentence.
+        XCTAssertLessThanOrEqual(r.edits.last?.backspaces ?? 0, "bob now ".count)
+    }
+
+    func testOnlyTextTypedHereIsEverDeleted() {
+        let r = run(["alpha beta gamma delta"], final: "Alpha, beta gamma delta.", settleAfter: [0])
+        let deleted = r.edits.map { $0.backspaces }.reduce(0, +)
+        XCTAssertLessThanOrEqual(deleted, r.typist.typed.count + "alpha beta gamma delta".count)
+        XCTAssertEqual(r.field, "Alpha, beta gamma delta.")
+    }
+
+    func testAnAbsurdlyLargeDisagreementIsNotWipedAndIsReported() {
         var typist = LiveTypist()
-        let long = (1...30).map { "word\($0)" }.joined(separator: " ")
+        let long = (1...140).map { "word\($0)" }.joined(separator: " ")
         _ = typist.update(partial: long)
-        _ = typist.update(partial: long + " extra")
-        let edit = typist.finish(final: "completely different sentence now " + long)
-        XCTAssertEqual(edit.backspaces, 0)
+        _ = typist.update(partial: long + " tail")
+        XCTAssertGreaterThan(typist.typed.count, LiveTypist.maxCorrection)
+        let edit = typist.finish(final: "Totally different. " + long)
+        XCTAssertTrue(edit.isEmpty)
+        XCTAssertTrue(typist.diverged)
     }
 
     func testNothingHeardTypesNothing() {
         var typist = LiveTypist()
         XCTAssertTrue(typist.update(partial: "").isEmpty)
+        XCTAssertTrue(typist.settle().isEmpty)
         XCTAssertTrue(typist.finish(final: "   ").isEmpty)
         XCTAssertEqual(typist.typed, "")
     }

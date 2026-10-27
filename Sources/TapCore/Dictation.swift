@@ -96,9 +96,11 @@ public enum DictationText {
 
 /// Decides what to type into the text box while someone is speaking.
 ///
-/// The recogniser keeps changing its mind about the last few words, and a field cannot be edited the way a draft can,
-/// so the rule is: only type words that stayed the same across two updates, and never delete while listening.
-/// At the end the final text is made to match, deleting at most a few characters of what was typed here.
+/// The recogniser keeps changing its mind: it fixes the last words, and it adds capitals and punctuation to words
+/// it has already shown. A field cannot be edited the way a draft can, so the rule is: while listening only ever
+/// add words that stayed the same across two updates, never delete. When the person finishes, the text in the
+/// field is made equal to the final transcript, exactly, by deleting only what was typed here from the first
+/// difference onwards and typing the rest again.
 public struct LiveTypist: Equatable, Sendable {
     public struct Edit: Equatable, Sendable {
         public var backspaces: Int
@@ -112,11 +114,14 @@ public struct LiveTypist: Equatable, Sendable {
         public var isEmpty: Bool { backspaces == 0 && insert.isEmpty }
     }
 
-    /// The most that is ever deleted to correct the ending, so a field's own text is never at risk.
-    public static let maxCorrection = 24
+    /// The most that is ever deleted to correct the ending. Beyond this the text is not touched and the caller is
+    /// told (`diverged`), so a very long draft is never wiped on a guess.
+    public static let maxCorrection = 600
 
     /// Everything sent to the app so far.
     public private(set) var typed = ""
+    /// True when the final text differs from what was typed by more than `maxCorrection` characters.
+    public private(set) var diverged = false
     private var previous = ""
 
     public init() {}
@@ -140,34 +145,34 @@ public struct LiveTypist: Equatable, Sendable {
 
         // Only whole words that are followed by a space: the word being spoken right now is not finished.
         guard let lastSpace = agreed.lastIndex(of: " ") else { return Edit() }
-        let safe = String(agreed[...lastSpace])
+        return addition(upTo: String(agreed[...lastSpace]))
+    }
 
+    /// The person paused and no new update arrived, so what was heard so far, including the last word, can be typed.
+    /// It is still only an addition. Anything the recogniser changes later is fixed at the end.
+    public mutating func settle() -> Edit {
+        addition(upTo: previous)
+    }
+
+    private mutating func addition(upTo safe: String) -> Edit {
         guard safe.count > typed.count, safe.hasPrefix(typed) else { return Edit() }
         let addition = String(safe.dropFirst(typed.count))
         typed = safe
         return Edit(insert: addition)
     }
 
-    /// The final transcript. Returns the edit that makes what was typed match it.
+    /// The final transcript. Returns the edit that makes what was typed equal to it, exactly.
     public mutating func finish(final: String) -> Edit {
         let target = DictationText.clean(final)
         guard !target.isEmpty else { return Edit() }
 
-        if target.hasPrefix(typed) {
-            let addition = String(target.dropFirst(typed.count))
-            typed = target
-            return Edit(insert: addition)
-        }
-
         let shared = Self.commonPrefixLength(typed, target)
         let tail = typed.count - shared
-        if tail <= Self.maxCorrection {
-            typed = target
-            return Edit(backspaces: tail, insert: String(target.dropFirst(shared)))
+        guard tail <= Self.maxCorrection else {
+            diverged = true
+            return Edit()
         }
-        // The ending differs by more than a few words. Do not delete that much: add what is new after what was typed.
-        let addition = String(target.dropFirst(min(typed.count, target.count)))
-        typed += addition
-        return Edit(insert: addition)
+        typed = target
+        return Edit(backspaces: tail, insert: String(target.dropFirst(shared)))
     }
 }

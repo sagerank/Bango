@@ -31,6 +31,9 @@ final class DictationController: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var finalWaiter: CheckedContinuation<Void, Never>?
+    private var idleFlush: Task<Void, Never>?
+    private var finalArrived = false
+    private var lastHeardAt = Date()
     private var autoStop: Task<Void, Never>?
     private let pill = DictationPill()
 
@@ -124,9 +127,10 @@ final class DictationController: ObservableObject {
     private func heard(text: String?, done: Bool) {
         if let text {
             transcript = text
+            lastHeardAt = Date()
             typeLive(text)
         }
-        if done { resumeWaiter() }
+        if done { finalArrived = true; resumeWaiter() }
     }
 
     // MARK: Typing into the app in front
@@ -160,6 +164,18 @@ final class DictationController: ObservableObject {
             return
         }
         KeyTyper.enqueue(typist.update(partial: partial))
+        scheduleSettle()
+    }
+
+    /// When the person pauses, type the last word too instead of holding it back until the next word arrives.
+    private func scheduleSettle() {
+        idleFlush?.cancel()
+        idleFlush = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard !Task.isCancelled, let self else { return }
+            guard self.session.isListening, self.typingAllowed, Self.frontBundleID() == self.typingTarget else { return }
+            KeyTyper.enqueue(self.typist.settle())
+        }
     }
 
     private func finish() async -> String {
@@ -168,13 +184,14 @@ final class DictationController: ObservableObject {
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
 
-        // The recogniser sends its last words after the audio ends. Wait for them, but never for long.
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            finalWaiter = continuation
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: 2_500_000_000)
-                self?.resumeWaiter()
-            }
+        idleFlush?.cancel()
+
+        // The recogniser sends its final, polished text (capitals, punctuation) after the audio ends. Wait for that
+        // result itself, checking every 50 ms so there is no lag once it arrives, and never longer than 2.5 s.
+        let stopped = Date()
+        finalArrived = false
+        while Date().timeIntervalSince(stopped) < 2.5, !finalArrived {
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
         let text = DictationText.clean(transcript)
@@ -194,8 +211,12 @@ final class DictationController: ObservableObject {
         } else if canType {
             KeyTyper.enqueue(typist.finish(final: text))
             await KeyTyper.flush()
-            let words = DictationText.wordCount(typist.typed)
-            message = "Typed \(words) \(words == 1 ? "word" : "words")"
+            if typist.diverged {
+                message = TextFallback.copy(text, reason: "The text changed too much to fix in place")
+            } else {
+                let words = DictationText.wordCount(typist.typed)
+                message = "Typed \(words) \(words == 1 ? "word" : "words")"
+            }
         } else {
             message = TextFallback.copy(text, reason: reason)
         }
@@ -211,6 +232,7 @@ final class DictationController: ObservableObject {
 
     private func teardown() {
         autoStop?.cancel()
+        idleFlush?.cancel()
         task?.cancel()
         task = nil
         request = nil

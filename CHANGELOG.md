@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.1
+
+Dictation typed text that was not exactly what you said, and lagged. **Compiled by CI, not yet seen on a Mac.**
+
+- Cause of the wrong text, reproduced in a test: the recogniser adds capitals and punctuation to words it has already shown. TapDeck had typed the earlier draft, and its end-of-dictation correction could delete only 24 characters. Past that it gave up and added the final text from the wrong place, which scrambled it. A long sentence came out as "hello world how are you doing today , my friend? I hope all is well." when the pill showed "Hello world. How are you doing today, my friend? I hope all is well."
+- Now at the end the field is made exactly equal to the final text: only what TapDeck itself typed is deleted, from the first difference onwards, and the rest is typed again. Up to 600 characters. If the difference is bigger than that, nothing is deleted and the final text goes to the clipboard with a message
+- Less lag: when you pause for half a second, the last word is typed too, instead of waiting for the next word. At the end TapDeck waits for the recogniser's final result and continues the moment it arrives, and typing is a little faster
+- Listening still never deletes anything. Only the final correction does
+- Tests (191 in total): the reproduced case, pause typing, exact result for several sentences with and without pause typing, deleting only typed text, and an absurd difference being reported instead of wiped
+
 ## 0.13.0
 
 Dictation now types straight into the text box as you speak, like macOS dictation, and no longer uses the clipboard. **Compiled by CI, not yet seen on a Mac. The typing itself could not be tested here.**
