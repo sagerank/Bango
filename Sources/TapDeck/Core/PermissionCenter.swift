@@ -4,7 +4,7 @@ import Foundation
 import Speech
 import TapCore
 
-/// Asks macOS for everything TapDeck can use, one item after another, and keeps the answers current.
+/// Asks macOS for everything Bango can use, one item after another, and keeps the answers current.
 ///
 /// macOS does not allow an app to grant itself anything. What this does is ask in a sensible order,
 /// open the right System Settings page, notice the moment the switch is flipped, and move on.
@@ -15,7 +15,7 @@ final class PermissionCenter: ObservableObject {
     enum Status: Equatable {
         case granted
         case missing
-        /// Allowed in System Settings, but macOS only applies it after TapDeck restarts.
+        /// Allowed in System Settings, but macOS only applies it after Bango restarts.
         case needsRestart
         /// Login item registered, waiting for the switch in System Settings.
         case needsApproval
@@ -148,7 +148,7 @@ final class PermissionCenter: ObservableObject {
         if next != status { status = next }
     }
 
-    /// Also asks System Events and Finder whether they would allow TapDeck. Starts them if they are not running.
+    /// Also asks System Events and Finder whether they would allow Bango. Starts them if they are not running.
     func refreshAll() async {
         refreshQuick()
         var next = status
@@ -197,7 +197,7 @@ final class PermissionCenter: ObservableObject {
         isRunning = false
         NSApp.activate(ignoringOtherApps: true)
         if needsRestart {
-            note = "Screen Recording was asked for. In System Settings, switch TapDeck on, then restart TapDeck once. macOS only applies it after a restart."
+            note = "Screen Recording was asked for. In System Settings, switch Bango on, then restart Bango once. macOS only applies it after a restart."
         }
     }
 
@@ -231,7 +231,7 @@ final class PermissionCenter: ObservableObject {
             if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
                 _ = await AVCaptureDevice.requestAccess(for: .audio)
             } else if AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
-                note = "Microphone was refused earlier. Switch TapDeck on under Privacy & Security, Microphone."
+                note = "Microphone was refused earlier. Switch Bango on under Privacy & Security, Microphone."
                 Self.openSettings("Privacy_Microphone")
             }
         case .speechRecognition:
@@ -240,7 +240,7 @@ final class PermissionCenter: ObservableObject {
                     SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
                 }
             } else if SFSpeechRecognizer.authorizationStatus() != .authorized {
-                note = "Speech Recognition was refused earlier. Switch TapDeck on under Privacy & Security, Speech Recognition."
+                note = "Speech Recognition was refused earlier. Switch Bango on under Privacy & Security, Speech Recognition."
                 Self.openSettings("Privacy_SpeechRecognition")
             }
         case .accessibility:
@@ -250,7 +250,7 @@ final class PermissionCenter: ObservableObject {
             // macOS shows its prompt only once per entry. If it already refused in an earlier run, asking again
             // does nothing, which is how this row used to loop. So clear the old entry first, then ask afresh.
             if screenRecordingStillRefused {
-                let id = Bundle.main.bundleIdentifier ?? "app.tapdeck.TapDeck"
+                let id = Bundle.main.bundleIdentifier ?? "app.bango.Bango"
                 _ = try? await ProcessRunner.run("/usr/bin/tccutil", ["reset", "ScreenCapture", id], timeout: 10)
                 defaults.removeObject(forKey: screenRequestedKey)
             }
@@ -291,10 +291,10 @@ final class PermissionCenter: ObservableObject {
 
     // MARK: - Recovery
 
-    /// Forgets everything macOS stored for TapDeck. Useful after installing a new build, because macOS ties
+    /// Forgets everything macOS stored for Bango. Useful after installing a new build, because macOS ties
     /// each permission to the exact app that received it and an updated unsigned build counts as a different app.
     func resetAll() async {
-        let id = Bundle.main.bundleIdentifier ?? "app.tapdeck.TapDeck"
+        let id = Bundle.main.bundleIdentifier ?? "app.bango.Bango"
         for service in ["Accessibility", "ScreenCapture", "AppleEvents", "Microphone", "SpeechRecognition", "SystemPolicyDesktopFolder", "SystemPolicyDocumentsFolder", "SystemPolicyDownloadsFolder"] {
             _ = try? await ProcessRunner.run("/usr/bin/tccutil", ["reset", service, id], timeout: 10)
         }

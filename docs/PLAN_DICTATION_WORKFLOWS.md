@@ -9,7 +9,7 @@ Goal: a double tap starts dictation, the same double tap stops it. On means off,
 
 Design
 - New action `dictation-toggle`, "Dictation: start or stop", in a new "Voice" group.
-- TapDeck tracks the state itself, so one gesture always does the opposite of the current state.
+- Bango tracks the state itself, so one gesture always does the opposite of the current state.
 - Built-in engine: Apple speech recognition with the microphone, on-device only. If the language has no
   on-device model the action says so and does nothing. Audio never leaves the Mac.
 - While listening: a pill with a pulsing microphone, a level meter and the words so far.

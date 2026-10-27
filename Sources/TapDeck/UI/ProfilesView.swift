@@ -137,7 +137,7 @@ struct ProfilesView: View {
     private func export(_ profile: Profile) {
         let panel = NSSavePanel()
         panel.title = "Export profile"
-        panel.nameFieldStringValue = "\(profile.name).tapdeck.json"
+        panel.nameFieldStringValue = "\(profile.name).bango.json"
         panel.allowedContentTypes = [.json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {

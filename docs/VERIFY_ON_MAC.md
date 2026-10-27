@@ -16,13 +16,13 @@ If a test fails, the test and the detector disagree. Tell me which one. The dete
 swift build -c release
 ```
 
-Expected: the TapDeck app target compiles. Compile errors here are likely, because the app code was never given to a compiler. Typical suspects: concurrency annotations, SwiftUI initializer labels, `IOKit` types. Send me the first few errors verbatim.
+Expected: the Bango app target compiles. Compile errors here are likely, because the app code was never given to a compiler. Typical suspects: concurrency annotations, SwiftUI initializer labels, `IOKit` types. Send me the first few errors verbatim.
 
 ## 2. Build the app
 
 ```sh
 ./scripts/build.sh --unsigned
-open dist/TapDeck.app
+open dist/Bango.app
 ```
 
 Expected: a hand icon appears in the menu bar and the welcome window opens.
@@ -66,10 +66,10 @@ Turn off test mode in General first, and save your work. Then test each action o
 - [ ] microphone mute (check System Settings, Sound, Input)
 - [ ] brightness up and down
 - [ ] sleep display, dark mode, screen saver
-- [ ] keep awake on and off (`pmset -g assertions` should list "TapDeck keep awake")
+- [ ] keep awake on and off (`pmset -g assertions` should list "Bango keep awake")
 - [ ] lock screen
 - [ ] screenshots, macOS shortcuts: area, full, toolbar
-- [ ] captures (need Screen Recording; quit and reopen TapDeck after allowing it): full screen saved, full screen copied, area saved, area copied, window saved, area and full screen with markup in Preview
+- [ ] captures (need Screen Recording; quit and reopen Bango after allowing it): full screen saved, full screen copied, area saved, area copied, window saved, area and full screen with markup in Preview
 - [ ] Screenshots profile: 3 taps saves the full screen to your screenshot folder
 - [ ] open an app, open a link, Mission Control, show desktop, hide other apps
 - [ ] emoji picker, paste a snippet (your clipboard should come back afterwards)

@@ -39,7 +39,7 @@ A binding matches on tap count, optional zone, optional strength, or on a rhythm
 
 Actions have a danger level. `caution` and `destructive` actions are only allowed on 4 or more taps unless the user confirms for that binding. Imported profiles lose confirmations, get new ids, and have code-running steps (`runsCode`) and unknown steps disabled.
 
-## TapDeck (macOS only)
+## Bango (macOS only)
 
 | File | Job |
 |---|---|

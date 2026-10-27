@@ -8,11 +8,12 @@ struct TapDeckApp: App {
 
     init() {
         // Before anything opens the motion sensor, so a leftover copy cannot be holding it.
+        SingleInstance.closeLegacyApp()
         SingleInstance.replaceOlderInstances()
     }
 
     var body: some Scene {
-        Window("TapDeck", id: "main") {
+        Window("Bango", id: "main") {
             DashboardView()
                 .environmentObject(model)
                 .environmentObject(model.store)

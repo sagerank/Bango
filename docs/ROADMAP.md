@@ -1,4 +1,4 @@
-# TapDeck roadmap
+# Bango roadmap
 
 ## Status (version 0.13.1)
 
@@ -22,7 +22,7 @@ audit; contributor hardware reports (docs/HARDWARE.md starts empty).
 
 Blocking items: 3 (update feed) and 4 (rename) are done in code. 1 (nocnoc licence) and 2 (provenance)
 are **still open** and need a message to the nocnoc author before a public release. The final name is
-still undecided; TapDeck is a working title.
+still undecided; Bango is a working title.
 
 The text below is the original plan, kept for reference.
 

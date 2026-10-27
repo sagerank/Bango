@@ -125,7 +125,7 @@ struct TuningView: View {
                     Slider(value: sensitivity, in: 0...1)
                 }
 
-                labeled("Time between taps", detail: "How long TapDeck waits for another tap before it decides. Shorter feels faster.") {
+                labeled("Time between taps", detail: "How long Bango waits for another tap before it decides. Shorter feels faster.") {
                     Slider(value: binding(\.groupingWindow), in: 0.25...0.8)
                 }
 
@@ -330,7 +330,7 @@ struct CalibrationSheet: View {
         switch stage {
         case .normal:
             return teachStrength
-                ? "Tap as lightly as you can while TapDeck still notices, \(needed) times."
+                ? "Tap as lightly as you can while Bango still notices, \(needed) times."
                 : "Tap your Mac the way you normally would, \(needed) times."
         case .hard:
             return teachStrength
@@ -375,7 +375,7 @@ struct CalibrationSheet: View {
                 $0.detector.hardPeak = 0
                 $0.detector.threshold = StrengthCalibration.suggestedThreshold(lightestMedian: soft, current: $0.detector.threshold)
             }
-            text += "The hard taps were only \(g(ratio)) times stronger and TapDeck needs \(g(StrengthCalibration.minimumRatio)) times, so soft and hard stay off. Try a clearly lighter and a clearly firmer tap."
+            text += "The hard taps were only \(g(ratio)) times stronger and Bango needs \(g(StrengthCalibration.minimumRatio)) times, so soft and hard stay off. Try a clearly lighter and a clearly firmer tap."
         case .failure(.tooFewTaps):
             text += "Too few taps were measured. Try again."
         }

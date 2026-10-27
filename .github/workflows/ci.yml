@@ -37,15 +37,15 @@ jobs:
         id: meta
         run: echo "name=$(tr -d '[:space:]' < VERSION)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
       - name: Package the unsigned app
-        run: ditto -c -k --keepParent dist/TapDeck.app dist/TapDeck-unsigned.zip
+        run: ditto -c -k --keepParent dist/Bango.app dist/Bango-unsigned.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: TapDeck-${{ steps.meta.outputs.name }}-app-zip
-          path: dist/TapDeck-unsigned.zip
+          name: Bango-${{ steps.meta.outputs.name }}-app-zip
+          path: dist/Bango-unsigned.zip
           if-no-files-found: error
       # Uploaded as a DMG so it keeps its layout. GitHub still wraps any artifact in a zip.
       - uses: actions/upload-artifact@v4
         with:
-          name: TapDeck-${{ steps.meta.outputs.name }}-DMG
-          path: dist/TapDeck-*-unsigned.dmg
+          name: Bango-${{ steps.meta.outputs.name }}-DMG
+          path: dist/Bango-*-unsigned.dmg
           if-no-files-found: error

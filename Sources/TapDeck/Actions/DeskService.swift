@@ -45,7 +45,7 @@ enum DeskService {
 
     /// Opens apps that are not running, waits for their windows, and moves each window to its saved place.
     static func apply(_ layout: DeskLayout) async -> String {
-        guard AXIsProcessTrusted() else { return "Allow Accessibility for TapDeck in Setup to move windows" }
+        guard AXIsProcessTrusted() else { return "Allow Accessibility for Bango in Setup to move windows" }
         let screens = WindowArranger.screens()
         guard !screens.isEmpty else { return "No screen was found" }
 

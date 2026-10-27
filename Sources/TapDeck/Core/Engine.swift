@@ -82,7 +82,7 @@ final class Engine: ObservableObject {
         }
     }
 
-    /// Bundle id of an app, ignoring TapDeck itself so its own window never hides the real target.
+    /// Bundle id of an app, ignoring Bango itself so its own window never hides the real target.
     private static func bundleID(of app: NSRunningApplication?) -> String? {
         guard let id = app?.bundleIdentifier, id != Bundle.main.bundleIdentifier else { return nil }
         return id

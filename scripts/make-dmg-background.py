@@ -2,7 +2,7 @@
 """Draws the disk image background (assets/dmg-background@2x.png, 1320x800 px, shown at 660x400 points).
 
 Needs Pillow and the Inter font. Run it only when the artwork changes; the PNG is committed.
-Icon positions the DMG script uses: TapDeck.app at (180, 190), Applications at (480, 190), in points.
+Icon positions the DMG script uses: Bango.app at (180, 190), Applications at (480, 190), in points.
 """
 import math
 import sys
@@ -49,7 +49,7 @@ img = Image.alpha_composite(img, glow)
 d = ImageDraw.Draw(img)
 
 # Title and subtitle.
-title = "Drag TapDeck into Applications"
+title = "Drag Bango into Applications"
 tf = font("InterDisplay-SemiBold.otf", 46)
 tw = d.textlength(title, font=tf)
 d.text(((W * S - tw) / 2, 92 * S), title, font=tf, fill=INK)

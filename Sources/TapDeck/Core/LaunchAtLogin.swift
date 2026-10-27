@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// Starts TapDeck when the user logs in, using the system login item API.
+/// Starts Bango when the user logs in, using the system login item API.
 /// Works only from a real app bundle, not from `swift run`.
 enum LaunchAtLogin {
     static var isAvailable: Bool {

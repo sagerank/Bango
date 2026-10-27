@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0
+
+- New name: Bango (was TapDeck). The app, installer and window titles use it.
+- New identity: the bundle id is now app.bango.Bango, so macOS treats this as a new app. You will be asked for Accessibility, Microphone and the others once more. Delete the old TapDeck from Applications; Bango closes a running TapDeck at launch.
+- Your settings, profiles and gestures are copied from the old TapDeck folder on first launch (the old folder is left alone).
+- Profile files now save as .bango.json; files exported by TapDeck still import.
+- Inside the code the Swift target is still called TapDeck. That is not user visible.
+
 ## 0.13.2
 
 - Faster tap detection: the detector no longer allocates on every sensor sample. Same results (bit-identical on the real recording, 26 of 26 taps, 7 gestures), about 5x less CPU per sample on the benchmark machine (about 1.9 microseconds against 9 to 10).

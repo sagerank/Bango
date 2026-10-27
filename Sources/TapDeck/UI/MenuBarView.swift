@@ -52,7 +52,7 @@ struct MenuBarView: View {
                     store.update { $0.monitoringEnabled.toggle() }
                 }
                 .buttonStyle(.pill)
-                Button("Open TapDeck") { open() }
+                Button("Open Bango") { open() }
                     .buttonStyle(.pillPrimary)
                 Spacer()
                 Button("Quit") { model.quit() }
@@ -70,7 +70,7 @@ struct MenuBarView: View {
         HStack(spacing: 10) {
             IconBadge(symbol: "hand.tap", size: 30)
             VStack(alignment: .leading, spacing: 1) {
-                Text("TapDeck").font(.headline).foregroundStyle(Theme.text)
+                Text("Bango").font(.headline).foregroundStyle(Theme.text)
                 Text(monitor.statusMessage)
                     .font(.caption)
                     .foregroundStyle(monitor.isSupported ? Theme.secondary : Theme.danger)

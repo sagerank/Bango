@@ -16,7 +16,7 @@ their notice here, and replace this paragraph.
 
 The AppleSPU device identifiers and report layout (vendor usage page 0xFF00,
 usage 3 for the accelerometer, usage 9 for the gyroscope, 22-byte reports with
-Q16.16 values) come from this research project. TapDeck has not yet confirmed
+Q16.16 values) come from this research project. Bango has not yet confirmed
 the gyroscope details on real hardware (see docs/HARDWARE.md).
 
     MIT License

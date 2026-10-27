@@ -30,21 +30,21 @@ public enum SetupItem: String, CaseIterable, Identifiable, Sendable {
     public var why: String {
         switch self {
         case .accessibility:
-            return "Lets TapDeck press keys for you: copy, paste, volume, media, brightness, lock screen, screenshots."
+            return "Lets Bango press keys for you: copy, paste, volume, media, brightness, lock screen, screenshots."
         case .microphone:
             return "Lets dictation hear you. The microphone is only on between the two double taps, and macOS shows its orange dot."
         case .speechRecognition:
-            return "Lets dictation turn what you say into text. TapDeck uses on-device recognition, so audio stays on this Mac."
+            return "Lets dictation turn what you say into text. Bango uses on-device recognition, so audio stays on this Mac."
         case .systemEvents:
-            return "Lets TapDeck switch dark mode."
+            return "Lets Bango switch dark mode."
         case .finder:
-            return "Lets TapDeck eject drives."
+            return "Lets Bango eject drives."
         case .screenRecording:
-            return "Lets TapDeck take screenshots straight to a file or the clipboard. macOS needs TapDeck restarted once after you allow it."
+            return "Lets Bango take screenshots straight to a file or the clipboard. macOS needs Bango restarted once after you allow it."
         case .screenshotFolder:
-            return "Lets TapDeck save screenshots to your screenshot folder (Desktop by default) without asking each time."
+            return "Lets Bango save screenshots to your screenshot folder (Desktop by default) without asking each time."
         case .loginItem:
-            return "Starts TapDeck when you log in, so taps work after a restart."
+            return "Starts Bango when you log in, so taps work after a restart."
         }
     }
 }

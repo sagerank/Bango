@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# Builds TapDeck.app.
+# Builds Bango.app.
 #
 #   ./scripts/build.sh --unsigned   Ad-hoc signed app for your own Mac. No Apple account needed. (default)
 #   ./scripts/build.sh --release    Developer ID signed, notarized, stapled, with ZIP and DMG.
 #
 # Nothing in here belongs to anybody in particular. Everything personal comes from the environment:
 #
-#   TAPDECK_BUNDLE_ID        Reverse-DNS id you control.       default: app.tapdeck.TapDeck
+#   TAPDECK_BUNDLE_ID        Reverse-DNS id you control.       default: app.bango.Bango
 #   TAPDECK_SIGN_IDENTITY    "Developer ID Application: Your Name (TEAMID)"   (release only)
 #   TAPDECK_NOTARY_PROFILE   notarytool keychain profile name  (release only)
 #   TAPDECK_FEED_URL         https URL of your appcast.xml     (optional, enables update checks)
 #   TAPDECK_SPARKLE_KEY      your Sparkle public EdDSA key     (optional, required with FEED_URL)
 #
-# Without a feed URL and key, update checks stay off. TapDeck never polls somebody else's feed.
+# Without a feed URL and key, update checks stay off. Bango never polls somebody else's feed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="TapDeck"
-BUNDLE_ID="${TAPDECK_BUNDLE_ID:-app.tapdeck.TapDeck}"
+APP_NAME="Bango"
+BIN_NAME="TapDeck"   # the SwiftPM executable; only the app bundle carries the product name
+BUNDLE_ID="${TAPDECK_BUNDLE_ID:-app.bango.Bango}"
 VERSION="$(tr -d '[:space:]' < VERSION)"
 BUILD_NUMBER="${TAPDECK_BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 ENTITLEMENTS="entitlements.plist"
@@ -40,7 +41,7 @@ case "${1:-}" in
 esac
 
 if [ "$(uname -s)" != "Darwin" ]; then
-    echo "TapDeck can only be built on macOS." >&2
+    echo "Bango can only be built on macOS." >&2
     exit 1
 fi
 
@@ -112,7 +113,7 @@ make_dmg() {
 echo "▸ Building $APP_NAME $VERSION (release, arm64)..."
 swift build -c release --arch arm64
 BIN_DIR=$(swift build -c release --arch arm64 --show-bin-path)
-[ -x "$BIN_DIR/$APP_NAME" ] || { echo "Build produced no $APP_NAME executable." >&2; exit 1; }
+[ -x "$BIN_DIR/$BIN_NAME" ] || { echo "Build produced no $BIN_NAME executable." >&2; exit 1; }
 [ -d "$SPARKLE_FRAMEWORK" ] || { echo "Sparkle framework not found at $SPARKLE_FRAMEWORK" >&2; exit 1; }
 echo "  ✓ Build complete"
 
@@ -127,7 +128,7 @@ fi
 echo "▸ Creating $APP_NAME.app..."
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources" "$BUNDLE/Contents/Frameworks"
-cp "$BIN_DIR/$APP_NAME" "$BUNDLE/Contents/MacOS/$APP_NAME"
+cp "$BIN_DIR/$BIN_NAME" "$BUNDLE/Contents/MacOS/$APP_NAME"
 # Sparkle has versioned symlinks and nested helpers, so copy with ditto.
 EMBEDDED_SPARKLE="$BUNDLE/Contents/Frameworks/Sparkle.framework"
 ditto "$SPARKLE_FRAMEWORK" "$EMBEDDED_SPARKLE"
@@ -156,11 +157,11 @@ cat > "$PLIST" <<PLISTEOF
     <key>NSSupportsAutomaticTermination</key><false/>
     <key>NSSupportsSuddenTermination</key><false/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>TapDeck sends Apple Events only for actions you choose, such as switching dark mode or ejecting drives.</string>
+    <string>Bango sends Apple Events only for actions you choose, such as switching dark mode or ejecting drives.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>TapDeck listens only between the two double taps of dictation, to turn your speech into text on this Mac.</string>
+    <string>Bango listens only between the two double taps of dictation, to turn your speech into text on this Mac.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>TapDeck uses on-device speech recognition to turn what you say into text. The audio does not leave this Mac.</string>
+    <string>Bango uses on-device speech recognition to turn what you say into text. The audio does not leave this Mac.</string>
     <key>NSHumanReadableCopyright</key><string>MIT License. See LICENSE.</string>
 </dict>
 </plist>
@@ -190,7 +191,7 @@ if [ "$MODE" = "unsigned" ]; then
     make_dmg "$UNSIGNED_DMG"
     echo ""
     echo "✓ Ready: $BUNDLE and $UNSIGNED_DMG (ad-hoc signed, for this Mac only)"
-    echo "  Install: open the DMG and drag TapDeck to Applications. Or run:  open $BUNDLE"
+    echo "  Install: open the DMG and drag Bango to Applications. Or run:  open $BUNDLE"
     echo "  If macOS says it cannot be opened: right-click the app, choose Open, then Open again."
     exit 0
 fi
