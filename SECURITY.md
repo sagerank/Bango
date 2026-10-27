@@ -1,6 +1,6 @@
 # Security
 
-## What Bingo can do on your Mac
+## What Bango can do on your Mac
 
 - Press keys on your behalf (Accessibility permission)
 - Run the Terminal command or Shortcut that **you** set on a gesture
@@ -16,4 +16,4 @@ Of particular interest: ways an imported profile could run something without the
 
 ## Data
 
-Bingo stores settings in `~/Library/Application Support/Bingo/config.json`. It contains your gestures and settings, no secrets. Terminal commands you add are stored there as plain text.
+Bango stores settings in `~/Library/Application Support/Bango/config.json`. It contains your gestures and settings, no secrets. Terminal commands you add are stored there as plain text.

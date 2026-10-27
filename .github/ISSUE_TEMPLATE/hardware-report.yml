@@ -1,5 +1,5 @@
 name: Hardware report
-description: Tell us whether Bingo works on your Mac. This is the most useful thing you can send.
+description: Tell us whether Bango works on your Mac. This is the most useful thing you can send.
 title: "Hardware report: <your Mac model>"
 labels: ["hardware"]
 body:

@@ -81,7 +81,7 @@ public enum TapLessons {
             case wanted:
                 break
             case .any:
-                return .tryAgain("Bingo could not tell where that tap was. Tap closer to the edge of the \(name(of: wanted)), with one fingertip.")
+                return .tryAgain("Bango could not tell where that tap was. Tap closer to the edge of the \(name(of: wanted)), with one fingertip.")
             default:
                 return .tryAgain("That felt like the \(name(of: g.zone)). Try the \(name(of: wanted)) instead.")
             }

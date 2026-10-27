@@ -2,10 +2,10 @@
 
 ## History
 
-Bingo started as a prototype built on top of an existing open source menu bar app (nocnoc,
+Bango started as a prototype built on top of an existing open source menu bar app (nocnoc,
 shaircast/nocnoc), which has no license file. The tap detector, the update wrapper and the permission helpers
 that came from that starting point have since been rewritten from scratch with a different design, and the
-published history of this repository starts after that rewrite. Bingo's detector is built on a jump-and-ringing
+published history of this repository starts after that rewrite. Bango's detector is built on a jump-and-ringing
 model of its own (see docs/ARCHITECTURE.md). The maintainers thank the nocnoc author for the idea of reading the
 Mac's motion sensor from a menu bar app.
 
@@ -13,7 +13,7 @@ Mac's motion sensor from a menu bar app.
 
 The AppleSPU device identifiers and report layout (vendor usage page 0xFF00,
 usage 3 for the accelerometer, usage 9 for the gyroscope, 22-byte reports with
-Q16.16 values) come from this research project. Bingo has not yet confirmed
+Q16.16 values) come from this research project. Bango has not yet confirmed
 the gyroscope details on real hardware (see docs/HARDWARE.md).
 
     MIT License

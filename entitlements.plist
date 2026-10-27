@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Lets Bingo send Apple Events (dark mode, eject drives) under the hardened runtime. -->
+    <!-- Lets Bango send Apple Events (dark mode, eject drives) under the hardened runtime. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
     <!-- Lets dictation use the microphone under the hardened runtime. -->

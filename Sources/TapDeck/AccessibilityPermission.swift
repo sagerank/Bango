@@ -2,11 +2,11 @@ import AppKit
 import ApplicationServices
 import Foundation
 
-/// The Accessibility permission, which lets Bingo press keys on the person's behalf.
+/// The Accessibility permission, which lets Bango press keys on the person's behalf.
 enum AccessibilityPermission {
     private static let settingsPage = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 
-    /// True when the person has already allowed Bingo. With `promptIfNeeded`, macOS also shows its own
+    /// True when the person has already allowed Bango. With `promptIfNeeded`, macOS also shows its own
     /// dialog when the answer is no.
     static func isTrusted(promptIfNeeded: Bool) -> Bool {
         guard promptIfNeeded else { return AXIsProcessTrusted() }

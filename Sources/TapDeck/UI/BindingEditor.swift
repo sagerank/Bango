@@ -103,7 +103,7 @@ struct BindingEditor: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(draft.key.strength == .any
                              ? "Soft and hard taps need a one-time teach-in: a few light taps and a few firm ones."
-                             : "This gesture will not fire until Bingo has learned your soft and hard taps.")
+                             : "This gesture will not fire until Bango has learned your soft and hard taps.")
                             .font(.caption).foregroundStyle(draft.key.strength == .any ? Theme.secondary : Theme.warning)
                         Button("Teach soft and hard taps…") { showStrengthSetup = true }.buttonStyle(.pill)
                     }
@@ -277,7 +277,7 @@ private struct StepRow: View {
     }
 
     private var hints: [String] {
-        guard let definition else { return ["This action is not known to this version of Bingo."] }
+        guard let definition else { return ["This action is not known to this version of Bango."] }
         var out: [String] = []
         switch definition.permission {
         case .accessibility: out.append("Needs the Accessibility permission.")

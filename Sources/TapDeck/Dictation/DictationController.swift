@@ -3,7 +3,7 @@ import AppKit
 import Speech
 import TapCore
 
-/// Dictation that lives inside Bingo: the microphone feeds Apple's on-device speech recogniser, a pill shows
+/// Dictation that lives inside Bango: the microphone feeds Apple's on-device speech recogniser, a pill shows
 /// what it hears, and when the same gesture is made again the text is typed into the app that was in front.
 ///
 /// The on and off is `DictationSession` in TapCore, so one gesture always does the opposite of the current state.
@@ -45,9 +45,9 @@ final class DictationController: ObservableObject {
         let speech = SFSpeechRecognizer.authorizationStatus() == .authorized
         switch (mic, speech) {
         case (true, true): return nil
-        case (false, true): return "Allow Microphone for Bingo in Setup, then try again"
-        case (true, false): return "Allow Speech Recognition for Bingo in Setup, then try again"
-        case (false, false): return "Allow Microphone and Speech Recognition for Bingo in Setup, then try again"
+        case (false, true): return "Allow Microphone for Bango in Setup, then try again"
+        case (true, false): return "Allow Speech Recognition for Bango in Setup, then try again"
+        case (false, false): return "Allow Microphone and Speech Recognition for Bango in Setup, then try again"
         }
     }
 
@@ -148,7 +148,7 @@ final class DictationController: ObservableObject {
             typingNote = "Not typing: allow Accessibility in Setup. The words will be copied instead"
         } else if front?.bundleIdentifier == Bundle.main.bundleIdentifier {
             typingAllowed = false
-            typingNote = "Not typing: Bingo itself is in front. Click into another app's text box first"
+            typingNote = "Not typing: Bango itself is in front. Click into another app's text box first"
         } else {
             typingAllowed = true
             typingNote = "Typing into \(front?.localizedName ?? "the app in front")"
@@ -200,8 +200,8 @@ final class DictationController: ObservableObject {
         let reason: String
         if typingNote.hasPrefix("You switched") || (typingAllowed && !stillInTarget) {
             reason = "You switched apps"
-        } else if typingNote.hasPrefix("Not typing: Bingo") {
-            reason = "Bingo was in front"
+        } else if typingNote.hasPrefix("Not typing: Bango") {
+            reason = "Bango was in front"
         } else {
             reason = "Accessibility is not allowed"
         }

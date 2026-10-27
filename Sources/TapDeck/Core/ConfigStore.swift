@@ -42,12 +42,12 @@ final class ConfigStore: ObservableObject {
     static func defaultDirectory() -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        let directory = base.appendingPathComponent("Bingo", isDirectory: true)
+        let directory = base.appendingPathComponent("Bango", isDirectory: true)
         // The app has had other names. Bring the settings of the most recent one along, once, and leave
         // the old folder untouched.
         let fm = FileManager.default
         if !fm.fileExists(atPath: directory.path) {
-            for previous in ["Bango", "TapDeck"] {
+            for previous in ["Bingo", "TapDeck"] {
                 let old = base.appendingPathComponent(previous, isDirectory: true)
                 if fm.fileExists(atPath: old.path) {
                     try? fm.copyItem(at: old, to: directory)
@@ -91,7 +91,7 @@ final class ConfigStore: ObservableObject {
             let data = try JSONEncoder.tapDeck.encode(config)
             try data.write(to: fileURL, options: .atomic)
         } catch {
-            NSLog("Bingo: could not save settings: \(error.localizedDescription)")
+            NSLog("Bango: could not save settings: \(error.localizedDescription)")
         }
     }
 }
