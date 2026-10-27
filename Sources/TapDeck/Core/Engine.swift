@@ -125,10 +125,17 @@ final class Engine: ObservableObject {
         }
         let binding = resolved.binding
         // Say which app's own gesture decided, so a per-app setup can be checked in Activity.
-        let label = resolved.appName.map { "\(baseLabel) in \($0)" } ?? baseLabel
-        let enabledSteps = binding.steps.filter { $0.enabled }
+        var label = resolved.appName.map { "\(baseLabel) in \($0)" } ?? baseLabel
+        // With a workflow, the Mac's state at this moment picks the branch.
+        let chosen = binding.resolvedSteps(in: SystemSnapshot.capture(frontmost: frontmostBundleID))
+        if let number = chosen.branchNumber { label += " · if \(number)" }
+        let enabledSteps = chosen.steps.filter { $0.enabled }
         guard !enabledSteps.isEmpty else {
-            log(label, .noBinding)
+            if binding.workflow != nil {
+                log(label, .blocked("No condition was met and there is no otherwise action, so nothing ran"))
+            } else {
+                log(label, .noBinding)
+            }
             return
         }
 
@@ -173,7 +180,8 @@ final class Engine: ObservableObject {
         if let last = steps.last, let lastSummary = summaries.last {
             kind = FeedbackKind.classify(actionId: last.actionId, parameter: last.parameter, summary: lastSummary)
         }
-        var feedback = Feedback(symbol: Describe.symbol(for: binding), title: label, detail: summary, kind: kind)
+        let symbol = steps.first.flatMap { ActionCatalog.definition(for: $0.actionId)?.symbol } ?? Describe.symbol(for: binding)
+        var feedback = Feedback(symbol: symbol, title: label, detail: summary, kind: kind)
         if case .screenshot = kind { feedback.capturePath = executor.lastCaptureURL?.path }
         onFeedback?(feedback)
     }

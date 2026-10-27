@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 142 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 162 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh
@@ -85,6 +85,14 @@ Turn off test mode in General first, and save your work. Then test each action o
 3. Click into a text field (Notes, a browser box). Double tap: a "Listening" pill should appear.
 4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the sentence is typed into the field.
 5. Try: Accessibility off (words go to the clipboard), a double tap with Microphone off (a clear message), talking for more than 2 minutes (it stops by itself).
+
+## 6c. Workflows
+
+1. Gestures, Add a gesture, Workflow from a template, Desk after restart. Save it.
+2. Open it again and press "Check against right now". It should say whether "if 1" matches and show the facts (time, minutes since start, battery, displays). Compare them with reality.
+3. Change the condition (for example "The Mac just started" to 100000 minutes) and check again: it should now match.
+4. With test mode off, make the gesture and look at Activity: it should say "Double tap · if 1" when a branch ran.
+5. Try a second branch and "any of these". Try switching the workflow off: the gesture's own actions must remain.
 
 ## 7. Everything else
 

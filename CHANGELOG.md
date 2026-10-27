@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.0
+
+Step 2 of docs/PLAN_DICTATION_WORKFLOWS.md: workflows with if and else. **The rules are tested on this machine. The screens are compiled by CI and have not been seen running.**
+
+- Any gesture can now choose what runs with if and else: "If these conditions, then these actions. Else if ... Otherwise ...". The gesture's own actions are the "otherwise", so switching workflows off loses nothing
+- Conditions: the Mac just started (minutes since it was started, for "after a restart"), an app is in front, an app is running, the time of day (also across midnight), the day of the week, on battery or plugged in, the battery level, an external display connected. Each can be turned around ("is not")
+- A branch can need all of its conditions or any of them. The first branch that matches runs
+- "Check against right now" shows which branch would run at this moment and the facts it decided on (time, minutes since start, battery, displays)
+- Three templates to start from: Desk after restart, Evening wind-down, Dim when the battery is low. Add them from "Add a gesture, Workflow from a template"
+- The gesture list and the activity log say which branch ran ("Double tap · if 1")
+- Safety and permissions look at every branch, not only the one that would run now. Imported profiles switch off code-running steps inside branches too
+- Not included: Wi-Fi name (macOS asks for Location permission to read it), so it is left out for now
+- 20 new tests (162 in total)
+
 ## 0.10.0
 
 Step 1 of docs/PLAN_DICTATION_WORKFLOWS.md: dictation. **Compiled by CI. The microphone, the speech engine and the typing into other apps could not be tested by the author and need to be tried on a Mac.**

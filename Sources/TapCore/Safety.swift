@@ -5,10 +5,10 @@ public enum SafetyPolicy {
     /// Risky actions need at least this many taps unless the user confirms otherwise.
     public static let minTapsForRisky = 4
 
-    /// Highest danger among the enabled steps of a binding.
+    /// Highest danger among the enabled steps of a binding, in every branch of its workflow.
     public static func danger(of binding: GestureBinding) -> ActionDanger {
         var worst = ActionDanger.safe
-        for step in binding.steps where step.enabled {
+        for step in binding.allSteps where step.enabled {
             let danger = ActionCatalog.definition(for: step.actionId)?.danger ?? .caution
             if danger > worst { worst = danger }
         }

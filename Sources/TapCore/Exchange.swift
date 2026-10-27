@@ -48,20 +48,34 @@ public enum ProfileExchange {
 
         var disabled = 0
 
+        func sanitizeSteps(_ steps: [ActionStep]) -> [ActionStep] {
+            steps.map { step in
+                var s = step
+                s.id = IDs.new()
+                let definition = ActionCatalog.definition(for: step.actionId)
+                if definition == nil || definition?.runsCode == true {
+                    if s.enabled { disabled += 1 }
+                    s.enabled = false
+                }
+                return s
+            }
+        }
+
         func sanitize(_ bindings: [GestureBinding]) -> [GestureBinding] {
             bindings.map { binding in
                 var b = binding
                 b.id = IDs.new()
                 b.acknowledgedRisk = false
-                b.steps = binding.steps.map { step in
-                    var s = step
-                    s.id = IDs.new()
-                    let definition = ActionCatalog.definition(for: step.actionId)
-                    if definition == nil || definition?.runsCode == true {
-                        if s.enabled { disabled += 1 }
-                        s.enabled = false
+                b.steps = sanitizeSteps(binding.steps)
+                if var workflow = binding.workflow {
+                    workflow.branches = workflow.branches.map { branch in
+                        var nb = branch
+                        nb.id = IDs.new()
+                        nb.conditions = branch.conditions.map { var c = $0; c.id = IDs.new(); return c }
+                        nb.steps = sanitizeSteps(branch.steps)
+                        return nb
                     }
-                    return s
+                    b.workflow = workflow
                 }
                 return b
             }

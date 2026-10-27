@@ -4,8 +4,8 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 
-> **Status: version 0.10.0, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
-> All the code is written and the gesture logic has 142 unit tests, but it was written on a machine
+> **Status: version 0.11.0, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
+> All the code is written and the gesture logic has 162 unit tests, but it was written on a machine
 > without a Swift toolchain, so nothing has been compiled or tried on real hardware. Expect to fix
 > compile errors on the first build. Start with [docs/VERIFY_ON_MAC.md](docs/VERIFY_ON_MAC.md).
 > Please report what you find, see [Hardware reports](#hardware-reports).
@@ -17,6 +17,7 @@ Free, open source (MIT), no account, no telemetry. TapDeck is a working title.
 - **Typing guard**: taps are ignored while you type or click, because typing shakes the chassis. It reads only how long ago the last key or click happened, never which key
 - **44 actions**: dictation,  copy, paste, cut, undo, redo, select all, play and pause, next and previous track, volume, mute, microphone mute, brightness, sleep display, dark mode, keep awake, lock screen, screen saver, ten ways to take a screenshot (full screen or an area, saved to a file or copied to the clipboard, a window, or captured and marked up in Preview), open an app, open a link, Mission Control, show desktop, hide other apps, emoji picker, paste a saved snippet, Wi-Fi toggle, Bluetooth toggle, audio output switch, eject drives, run a Shortcut, run a Terminal command
 - **Action chains**: one gesture can run several actions, with pauses between them
+- **If and else workflows**: a gesture can choose what runs from the time, the app in front, the battery, whether the Mac just started, and more. For example, two knocks soon after a restart open your apps, and at any other time do something else
 - **Per-app gestures**: a double tap can copy in one app and undo in another
 - **Soft and hard taps**: a soft double tap and a hard double tap can do different things (calibrated from your own taps)
 - **Tap rhythms**: record a pattern such as tap, tap, pause, tap

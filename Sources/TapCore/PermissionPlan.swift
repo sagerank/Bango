@@ -84,8 +84,8 @@ public enum PermissionPlan {
     public static func usage(in config: AppConfig) -> [SetupItem: [String]] {
         var steps: [ActionStep] = []
         for profile in config.profiles {
-            steps += profile.bindings.flatMap { $0.steps }
-            steps += profile.appOverrides.flatMap { $0.bindings.flatMap { $0.steps } }
+            steps += profile.bindings.flatMap { $0.allSteps }
+            steps += profile.appOverrides.flatMap { $0.bindings.flatMap { $0.allSteps } }
         }
         var result: [SetupItem: [String]] = [:]
         for step in steps where step.enabled {

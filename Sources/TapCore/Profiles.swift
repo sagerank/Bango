@@ -48,7 +48,10 @@ public struct GestureBinding: Codable, Equatable, Identifiable, Sendable {
     public var key: GestureKey
     /// When set, the binding matches this tap rhythm instead of a plain tap count.
     public var rhythm: RhythmPattern?
+    /// The gesture's own actions. With a workflow these are the "otherwise": what runs when no branch matches.
     public var steps: [ActionStep]
+    /// Optional if and else branches that choose what runs.
+    public var workflow: Workflow?
     /// The user confirmed that a risky action may fire on fewer than 4 taps.
     public var acknowledgedRisk: Bool
 
@@ -57,12 +60,14 @@ public struct GestureBinding: Codable, Equatable, Identifiable, Sendable {
         key: GestureKey,
         rhythm: RhythmPattern? = nil,
         steps: [ActionStep] = [],
+        workflow: Workflow? = nil,
         acknowledgedRisk: Bool = false
     ) {
         self.id = id
         self.key = key
         self.rhythm = rhythm
         self.steps = steps
+        self.workflow = workflow
         self.acknowledgedRisk = acknowledgedRisk
     }
 
@@ -178,6 +183,16 @@ public struct Profile: Codable, Equatable, Identifiable, Sendable {
                     var s = step
                     s.id = IDs.new()
                     return s
+                }
+                if var workflow = binding.workflow {
+                    workflow.branches = workflow.branches.map { branch in
+                        var nb = branch
+                        nb.id = IDs.new()
+                        nb.conditions = branch.conditions.map { var c = $0; c.id = IDs.new(); return c }
+                        nb.steps = branch.steps.map { var s = $0; s.id = IDs.new(); return s }
+                        return nb
+                    }
+                    b.workflow = workflow
                 }
                 return b
             }

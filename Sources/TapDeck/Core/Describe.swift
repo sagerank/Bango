@@ -44,7 +44,16 @@ enum Describe {
         return names.isEmpty ? "Nothing" : names.joined(separator: ", then ")
     }
 
+    /// One line for the gesture list. With a workflow: the first branch, how many more, and the otherwise.
+    static func summary(of binding: GestureBinding) -> String {
+        guard let workflow = binding.workflow, let first = workflow.branches.first else { return chain(binding.steps) }
+        var text = "If \(first.summary): \(chain(first.steps))"
+        if workflow.branches.count > 1 { text += " (+\(workflow.branches.count - 1) more)" }
+        return text + ". Otherwise: " + chain(binding.steps)
+    }
+
     static func symbol(for binding: GestureBinding) -> String {
+        if binding.workflow != nil { return "arrow.triangle.branch" }
         guard let first = binding.steps.first(where: { $0.enabled }) else { return "nosign" }
         return ActionCatalog.definition(for: first.actionId)?.symbol ?? "questionmark"
     }

@@ -142,6 +142,13 @@ struct GesturesView: View {
             }
             Divider()
             Button("Tap rhythm…") { rhythmFor = RhythmTarget(overrideID: overrideID) }
+            Menu("Workflow from a template") {
+                ForEach(WorkflowTemplates.all) { template in
+                    Button(template.title) {
+                        target = EditTarget(binding: template.make(), isNew: true, overrideID: overrideID)
+                    }
+                }
+            }
         } label: {
             Label("Add a gesture", systemImage: "plus")
         }
@@ -236,7 +243,7 @@ private struct BindingRow: View {
                     Text(Describe.key(binding.key, rhythm: binding.rhythm))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(Theme.text)
-                    Text(Describe.chain(binding.steps))
+                    Text(Describe.summary(of: binding))
                         .font(.caption)
                         .foregroundStyle(Theme.secondary)
                         .lineLimit(1)

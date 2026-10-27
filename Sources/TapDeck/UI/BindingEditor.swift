@@ -46,6 +46,7 @@ struct BindingEditor: View {
                 VStack(alignment: .leading, spacing: 18) {
                     PageHeader(title: isNew ? "New gesture" : "Edit gesture")
                     gestureCard
+                    WorkflowCard(workflow: $draft.workflow, otherwise: draft.steps)
                     stepsCard
                     safetyNotice
                     if clash {
@@ -134,38 +135,10 @@ struct BindingEditor: View {
     private var stepsCard: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
-                SectionLabel(text: "Do")
-                ForEach($draft.steps) { $step in
-                    StepRow(
-                        step: $step,
-                        canMoveUp: draft.steps.first?.id != step.id,
-                        canMoveDown: draft.steps.last?.id != step.id,
-                        move: { delta in move(step.id, by: delta) },
-                        remove: { remove(step.id) }
-                    )
-                    if draft.steps.last?.id != step.id {
-                        Divider().overlay(Theme.stroke)
-                    }
-                }
-                Button {
-                    draft.steps.append(ActionStep(actionId: "none"))
-                } label: {
-                    Label("Add another action", systemImage: "plus")
-                }
-                .buttonStyle(.quiet)
+                SectionLabel(text: draft.workflow == nil ? "Do" : "Otherwise, when no condition above is met")
+                StepsEditor(steps: $draft.steps)
             }
         }
-    }
-
-    private func move(_ id: String, by delta: Int) {
-        guard let index = draft.steps.firstIndex(where: { $0.id == id }) else { return }
-        let target = index + delta
-        guard draft.steps.indices.contains(target) else { return }
-        draft.steps.swapAt(index, target)
-    }
-
-    private func remove(_ id: String) {
-        draft.steps.removeAll { $0.id == id }
     }
 
     // MARK: Safety
@@ -206,9 +179,44 @@ struct BindingEditor: View {
             }
             .buttonStyle(.pillPrimary)
             .keyboardShortcut(.defaultAction)
-            .disabled(draft.steps.isEmpty)
+            .disabled(draft.allSteps.isEmpty)
         }
         .padding(16)
+    }
+}
+
+/// A list of actions with add, move and remove. Used for a gesture's own actions and for each branch of a workflow.
+struct StepsEditor: View {
+    @Binding var steps: [ActionStep]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach($steps) { $step in
+                StepRow(
+                    step: $step,
+                    canMoveUp: steps.first?.id != step.id,
+                    canMoveDown: steps.last?.id != step.id,
+                    move: { delta in move(step.id, by: delta) },
+                    remove: { steps.removeAll { $0.id == step.id } }
+                )
+                if steps.last?.id != step.id {
+                    Divider().overlay(Theme.stroke)
+                }
+            }
+            Button {
+                steps.append(ActionStep(actionId: "none"))
+            } label: {
+                Label("Add another action", systemImage: "plus")
+            }
+            .buttonStyle(.quiet)
+        }
+    }
+
+    private func move(_ id: String, by delta: Int) {
+        guard let index = steps.firstIndex(where: { $0.id == id }) else { return }
+        let target = index + delta
+        guard steps.indices.contains(target) else { return }
+        steps.swapAt(index, target)
     }
 }
 
