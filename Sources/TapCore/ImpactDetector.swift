@@ -166,7 +166,9 @@ public final class ImpactDetector {
     private var lastTime: Double?
     private var noiseFloor = 0.01
     private var lockoutUntil = -Double.infinity
+    /// Recent samples. `head` is the first one still inside the history window, so dropping the oldest is free.
     private var history: [Recent] = []
+    private var head = 0
     private var pending: Pending?
     private var rejections = RejectionCounts()
     private var episode: Episode?
@@ -191,6 +193,7 @@ public final class ImpactDetector {
         noiseFloor = 0.01
         lockoutUntil = -Double.infinity
         history.removeAll()
+        head = 0
         pending = nil
         rejections = RejectionCounts()
         episode = nil
@@ -227,8 +230,13 @@ public final class ImpactDetector {
         let filtered = max(highPassMagnitude, jerkMagnitude * 0.92)
 
         history.append(Recent(time: now, filtered: filtered, lowStep: lowStep, lowPass: lowPass))
-        while let first = history.first, now - first.time > Self.historyWindow {
-            history.removeFirst()
+        while head < history.count, now - history[head].time > Self.historyWindow {
+            head += 1
+        }
+        // Shift the storage only now and then, so each sample costs a constant amount.
+        if head >= 2048 {
+            history.removeFirst(head)
+            head = 0
         }
 
         let sequenceOpen = now - lastAccepted <= config.groupingWindow
@@ -238,22 +246,56 @@ public final class ImpactDetector {
             ? currentThreshold(base: config.threshold)
             : updateAdaptiveThreshold(base: config.threshold, signal: filtered, elapsed: elapsed)
 
-        let quiet = window(within: Self.quietWindow, now: now, excludingTail: Self.quietTail)
-        let quietValues = quiet.map { $0.filtered }
-        let quietAverage = quietValues.isEmpty ? 0 : quietValues.reduce(0, +) / Double(quietValues.count)
-        let quietMax = quietValues.max() ?? 0
-
-        // The ringing of our own accepted taps also moves the low-pass output. It is not the Mac
-        // being carried, so only samples after it has settled count towards the motion check.
+        // One pass over the last 0.4 s, oldest first (the order the sums were always taken in), instead of building
+        // a separate list for each question. The longest window is the motion window.
         let settled = lastAccepted + Self.tapSettleTime
-        let motion = window(within: Self.motionWindow, now: now, excludingTail: Self.motionTail)
-            .filter { $0.time > settled }
-        let lowMotion = motion.isEmpty ? 0 : motion.reduce(0) { $0 + $1.lowStep } / Double(motion.count)
+        let impulseThreshold = adaptive * 0.55
+        let impulseFallback = sampleRate > 0 ? 1.0 / sampleRate : 0.01
+
+        var scanStart = history.count
+        while scanStart > head, now - history[scanStart - 1].time <= Self.motionWindow { scanStart -= 1 }
+
+        var quietSum = 0.0, quietCount = 0, quietMaxValue = 0.0
+        var motionSum = 0.0, motionCount = 0
+        var motionOldest: Vec3?, motionNewest: Vec3?
+        var ringPeak = 0.0
+        var impulseDuration = 0.0
+        var previousInImpulse: Double?
+        for index in scanStart..<history.count {
+            let sample = history[index]
+            let age = now - sample.time
+            // How steady it was just before: the last 0.28 s, leaving out the newest 0.03 s.
+            if age <= Self.quietWindow, age >= Self.quietTail {
+                quietSum += sample.filtered
+                quietCount += 1
+                quietMaxValue = max(quietMaxValue, sample.filtered)
+            }
+            // Whether the Mac is being carried. The ringing of our own accepted taps also moves the low-pass
+            // output, so only samples after it has settled count.
+            if age >= Self.motionTail, sample.time > settled {
+                motionSum += sample.lowStep
+                motionCount += 1
+                if motionOldest == nil { motionOldest = sample.lowPass }
+                motionNewest = sample.lowPass
+            }
+            // The level of the ringing just before now, for the rise test.
+            if age <= Self.riseWindow, age >= Self.riseTail { ringPeak = max(ringPeak, sample.filtered) }
+            // How long the bump has lasted.
+            if age <= Self.impulseWindow {
+                if sample.filtered > impulseThreshold {
+                    impulseDuration += previousInImpulse.map { max(sample.time - $0, 0) } ?? impulseFallback
+                }
+                previousInImpulse = sample.time
+            }
+        }
+        let quietAverage = quietCount == 0 ? 0 : quietSum / Double(quietCount)
+        let quietMax = quietMaxValue
+        let lowMotion = motionCount == 0 ? 0 : motionSum / Double(motionCount)
         var drift = 0.0
         // Measured across the window only. Using the current low-pass value would let the tap that
         // is arriving right now (its slow component moves the output by about 0.1 g) lock itself out.
-        if let earliest = motion.first, let latest = motion.last {
-            drift = (latest.lowPass - earliest.lowPass).length
+        if let earliest = motionOldest, let latest = motionNewest {
+            drift = (latest - earliest).length
         }
 
         if !sequenceOpen {
@@ -265,19 +307,11 @@ public final class ImpactDetector {
         }
         let inLockout = now < lockoutUntil
 
-        let impulse = window(within: Self.impulseWindow, now: now, excludingTail: 0)
-        let impulseDuration = durationAbove(
-            impulse,
-            threshold: adaptive * 0.55,
-            fallback: sampleRate > 0 ? 1.0 / sampleRate : 0.01
-        )
-
         let baselineQuiet = quietAverage < adaptive * 0.28 && quietMax < adaptive * 0.72
         // The first tap must look like a knock: sharp and short, after a quiet moment.
         // Follow-up taps land on top of the ringing of the previous one, so they are judged
         // by how far they rise above that ringing.
-        let ringLevel = window(within: Self.riseWindow, now: now, excludingTail: Self.riseTail)
-            .reduce(0) { max($0, $1.filtered) }
+        let ringLevel = ringPeak
         let rise = filtered / max(ringLevel, 0.001)
         let sharp: Bool
         let brief: Bool
@@ -373,19 +407,6 @@ public final class ImpactDetector {
 
     // MARK: - Helpers
 
-    /// Samples from the last `duration` seconds, oldest first, skipping the newest `tail` seconds.
-    private func window(within duration: Double, now: Double, excludingTail tail: Double) -> [Recent] {
-        var out: [Recent] = []
-        var index = history.count - 1
-        while index >= 0 {
-            let age = now - history[index].time
-            if age > duration { break }
-            if age >= tail { out.append(history[index]) }
-            index -= 1
-        }
-        return Array(out.reversed())
-    }
-
     /// A follow-up tap must reach this many times the ringing level of the previous 40 ms.
     /// Measured on a real MacBook (800 Hz): taps peak at 2.1 to 3.0, ringing alone stays below 1.0.
     private static let riseRatio = 1.5
@@ -419,17 +440,5 @@ public final class ImpactDetector {
         let blend = 1 - pow(0.97, elapsed / 0.01)
         noiseFloor += (capped - noiseFloor) * blend
         return max(base, noiseFloor * 3.2 + 0.015)
-    }
-
-    private func durationAbove(_ samples: [Recent], threshold: Double, fallback: Double) -> Double {
-        var total = 0.0
-        for (index, s) in samples.enumerated() where s.filtered > threshold {
-            if index > 0 {
-                total += max(s.time - samples[index - 1].time, 0)
-            } else {
-                total += fallback
-            }
-        }
-        return total
     }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.2
+
+- Faster tap detection: the detector no longer allocates on every sensor sample. Same results (bit-identical on the real recording, 26 of 26 taps, 7 gestures), about 5x less CPU per sample on the benchmark machine (about 1.9 microseconds against 9 to 10).
+- The dictation "Listening" pill now sits at the top centre under the menu bar, so it no longer covers the confirmation that appears after a double or triple tap (that stays at the bottom).
+
 ## 0.13.1
 
 Dictation typed text that was not exactly what you said, and lagged. **Compiled by CI, not yet seen on a Mac.**

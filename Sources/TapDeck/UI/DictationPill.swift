@@ -118,6 +118,8 @@ final class DictationPill {
         guard let screen = NSScreen.main else { return }
         let frame = screen.visibleFrame
         let size = panel.frame.size
-        panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 110))
+        // Top centre, just under the menu bar. Confirmations from taps (HUD) float at the bottom,
+        // so the two never sit on top of each other.
+        panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.maxY - size.height - 16))
     }
 }
