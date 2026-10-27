@@ -63,6 +63,7 @@ final class Engine: ObservableObject {
         self.store = store
         self.executor = executor
         frontmostBundleID = Self.bundleID(of: NSWorkspace.shared.frontmostApplication)
+        executor.frontmostBundleID = frontmostBundleID
 
         observer = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
@@ -70,7 +71,10 @@ final class Engine: ObservableObject {
             queue: .main
         ) { [weak self] note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            Task { @MainActor in self?.frontmostBundleID = Self.bundleID(of: app) ?? self?.frontmostBundleID }
+            Task { @MainActor in
+                self?.frontmostBundleID = Self.bundleID(of: app) ?? self?.frontmostBundleID
+                self?.executor.frontmostBundleID = self?.frontmostBundleID
+            }
         }
 
         monitor.onGesture = { [weak self] gesture in

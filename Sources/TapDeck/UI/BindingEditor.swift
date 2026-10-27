@@ -246,8 +246,16 @@ private struct StepRow: View {
             }
 
             if let spec = definition?.parameter {
-                TextField(spec.label, text: $step.parameter, prompt: Text(spec.placeholder))
-                    .textFieldStyle(.roundedBorder)
+                if spec.choices.isEmpty {
+                    TextField(spec.label, text: $step.parameter, prompt: Text(spec.placeholder))
+                        .textFieldStyle(.roundedBorder)
+                } else {
+                    Picker(spec.label, selection: $step.parameter) {
+                        Text("Choose…").tag("")
+                        ForEach(spec.choices, id: \.self) { Text($0.capitalized).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
             }
 
             HStack(spacing: 12) {

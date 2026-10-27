@@ -291,15 +291,11 @@ public enum WorkflowTemplates {
         public let make: @Sendable () -> GestureBinding
     }
 
-    private static func open(_ app: String, wait: Double = 0) -> ActionStep {
-        ActionStep(actionId: "launch-app", parameter: app, delayAfter: wait)
-    }
-
     public static let all: [Template] = [
         Template(
             id: "desk-after-restart",
             title: "Desk after restart",
-            detail: "Double tap soon after the Mac started: open your apps. At any other time it does nothing. Change the apps to yours."
+            detail: "Double tap soon after the Mac started: open your apps, then put the windows where your saved layout says. At any other time it does nothing. Change the apps to yours and save a layout in Desk."
         ) {
             GestureBinding(
                 key: GestureKey(taps: 2),
@@ -307,7 +303,10 @@ public enum WorkflowTemplates {
                 workflow: Workflow(branches: [
                     WorkflowBranch(
                         conditions: [WorkflowCondition(kind: .justStarted, number: 45)],
-                        steps: [open("Mail", wait: 2), open("Calendar", wait: 2), open("Safari")]
+                        steps: [
+                            ActionStep(actionId: "open-apps", parameter: "Mail, Calendar, Safari", delayAfter: 1),
+                            ActionStep(actionId: "apply-layout"),
+                        ]
                     ),
                 ])
             )

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12.0
+
+Step 3 of docs/PLAN_DICTATION_WORKFLOWS.md: desk setup. **The layout maths and the parsing are tested on this machine. Moving real windows through Accessibility could not be tested and needs a Mac.**
+
+- New Desk page: "Save current windows" remembers every app with a visible window and where it is on its screen, as fractions of that screen, so a layout still fits after a change of resolution. Rename, update from the current windows, delete, and "Apply now"
+- New actions in Apps and windows: "Apply a saved window layout" (opens apps that are not running, waits for their windows, moves each one), "Arrange the front window" (left, right, top and bottom half, thirds, maximise, centre), "Open several apps, in order", and "Open files, folders and links"
+- Open files, folders and links accepts only web and mail links and full paths, and is switched off when a profile is imported, like Open a link
+- The "Desk after restart" template now opens Mail, Calendar and Safari and then applies your first saved layout. With no layout yet it says so and carries on
+- Results say what happened: "Arranged 4 of 5 windows. Notes is full screen"
+- Needs Accessibility. macOS gives apps no way to switch desktops (Spaces) or rearrange screens, so layouts place windows on the screens you have; full-screen windows and apps that refuse are skipped
+- 15 new tests (177 in total): presets that fill a screen exactly, odd sizes, saving and applying on a different screen size, windows kept on the screen and usable, parsing, the allow list
+
 ## 0.11.0
 
 Step 2 of docs/PLAN_DICTATION_WORKFLOWS.md: workflows with if and else. **The rules are tested on this machine. The screens are compiled by CI and have not been seen running.**

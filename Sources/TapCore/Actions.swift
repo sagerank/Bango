@@ -53,10 +53,13 @@ public enum ActionPermission: String, Codable, Sendable {
 public struct ParameterSpec: Equatable, Sendable {
     public let label: String
     public let placeholder: String
+    /// Ready answers to pick from. Empty means free text.
+    public let choices: [String]
 
-    public init(label: String, placeholder: String) {
+    public init(label: String, placeholder: String, choices: [String] = []) {
         self.label = label
         self.placeholder = placeholder
+        self.choices = choices
     }
 }
 
@@ -151,6 +154,16 @@ public enum ActionCatalog {
                          parameter: ParameterSpec(label: "App name", placeholder: "Safari")),
         ActionDefinition("open-url", "Open a link", symbol: "link", category: .apps,
                          parameter: ParameterSpec(label: "Link", placeholder: "https://example.com"), runsCode: true),
+        ActionDefinition("open-apps", "Open several apps, in order", symbol: "square.grid.2x2", category: .apps,
+                         parameter: ParameterSpec(label: "Apps, separated by commas", placeholder: "Mail, Calendar, Safari")),
+        ActionDefinition("open-items", "Open files, folders and links", symbol: "folder", category: .apps,
+                         parameter: ParameterSpec(label: "One per line", placeholder: "~/Documents/Project\nhttps://example.com"), runsCode: true),
+        ActionDefinition("arrange-window", "Arrange the front window", symbol: "rectangle.lefthalf.inset.filled", category: .apps,
+                         permission: .accessibility,
+                         parameter: ParameterSpec(label: "Position", placeholder: "left half", choices: WindowPreset.choices)),
+        ActionDefinition("apply-layout", "Apply a saved window layout", symbol: "rectangle.3.group", category: .apps,
+                         permission: .accessibility,
+                         parameter: ParameterSpec(label: "Layout name (empty uses your first layout)", placeholder: "Desk")),
         ActionDefinition("mission-control", "Mission Control", symbol: "rectangle.3.group", category: .apps, permission: .accessibility),
         ActionDefinition("show-desktop", "Show desktop", symbol: "macwindow", category: .apps, permission: .accessibility),
         ActionDefinition("hide-others", "Hide other apps", symbol: "eye.slash", category: .apps, permission: .accessibility),

@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
         self.store = store
         self.monitor = monitor
         self.executor = executor
+        executor.layoutsProvider = { [weak store] in store?.config.layouts ?? [] }
         self.engine = Engine(store: store, monitor: monitor, executor: executor)
         self.updater = AppUpdater()
 

@@ -15,6 +15,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var hasCompletedOnboarding: Bool
     public var showHUD: Bool
     public var waveformGain: Double
+    /// Saved window arrangements for the apply-layout action.
+    public var layouts: [DeskLayout]
 
     public init() {
         let profiles = DefaultProfiles.make()
@@ -28,11 +30,12 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.hasCompletedOnboarding = false
         self.showHUD = true
         self.waveformGain = 3.0
+        self.layouts = []
     }
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion, detector, profiles, activeProfileID, zoneModel, monitoringEnabled
-        case dryRunEndsAt, hasCompletedOnboarding, showHUD, waveformGain
+        case dryRunEndsAt, hasCompletedOnboarding, showHUD, waveformGain, layouts
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,6 +53,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         hasCompletedOnboarding = c.lenient(.hasCompletedOnboarding, d.hasCompletedOnboarding)
         showHUD = c.lenient(.showHUD, d.showHUD)
         waveformGain = c.lenient(.waveformGain, d.waveformGain)
+        layouts = c.lenient(.layouts, d.layouts)
     }
 
     public var activeProfile: Profile {

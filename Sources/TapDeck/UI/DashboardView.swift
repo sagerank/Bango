@@ -3,7 +3,7 @@ import SwiftUI
 import TapCore
 
 enum DashboardSection: String, CaseIterable, Identifiable {
-    case setup, gestures, profiles, tuning, zones, activity, general
+    case setup, gestures, profiles, desk, tuning, zones, activity, general
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .setup: return "Setup"
         case .gestures: return "Gestures"
         case .profiles: return "Profiles"
+        case .desk: return "Desk"
         case .tuning: return "Tuning"
         case .zones: return "Zones & rhythm"
         case .activity: return "Activity"
@@ -24,6 +25,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .setup: return "checkmark.shield"
         case .gestures: return "hand.tap"
         case .profiles: return "person.2"
+        case .desk: return "macwindow.on.rectangle"
         case .tuning: return "slider.horizontal.3"
         case .zones: return "square.split.2x2"
         case .activity: return "list.bullet.rectangle"
@@ -142,6 +144,7 @@ struct DashboardView: View {
         case .setup: SetupView(showTour: { onboardingStartsAtPermissions = false; showOnboarding = true })
         case .gestures: GesturesView(goToZones: { selection = .zones })
         case .profiles: ProfilesView()
+        case .desk: DeskView()
         case .tuning: TuningView()
         case .zones: ZonesRhythmView()
         case .activity: ActivityView()

@@ -190,7 +190,8 @@ final class WorkflowTemplateTests: XCTestCase {
     func testDeskAfterRestartOnlyActsSoonAfterStart() {
         let gesture = WorkflowTemplates.all.first { $0.id == "desk-after-restart" }!.make()
         let soon = gesture.resolvedSteps(in: SystemContext(minutesSinceBoot: 5))
-        XCTAssertEqual(soon.steps.map { $0.parameter }, ["Mail", "Calendar", "Safari"])
+        XCTAssertEqual(soon.steps.map { $0.actionId }, ["open-apps", "apply-layout"])
+        XCTAssertEqual(soon.steps.first?.parameter, "Mail, Calendar, Safari")
         let later = gesture.resolvedSteps(in: SystemContext(minutesSinceBoot: 600))
         XCTAssertEqual(later.steps.map { $0.actionId }, ["none"])
     }

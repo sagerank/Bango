@@ -18,6 +18,10 @@ final class ActionExecutor: ObservableObject {
 
     private var caffeineAssertion = IOPMAssertionID(0)
     private var lastInputVolume = 75
+    /// The app that was in front before TapDeck's own window, set by the engine, for "Arrange the front window".
+    var frontmostBundleID: String?
+    /// Saved window layouts, read when "Apply a saved window layout" runs.
+    var layoutsProvider: (() -> [DeskLayout])?
     private var lastPermissionPrompt = Date.distantPast
 
     private static let allowedLinkSchemes: Set<String> = ["http", "https", "mailto"]
@@ -84,6 +88,21 @@ final class ActionExecutor: ObservableObject {
             return "Opened \(name)"
         case "open-url":
             return try openLink(step.parameter)
+        case "open-apps": return try await openApps(step.parameter)
+        case "open-items": return try openItems(step.parameter)
+        case "arrange-window":
+            guard let preset = WindowPreset.parse(step.parameter) else {
+                throw ActionError("Choose a position: \(WindowPreset.choices.joined(separator: ", "))")
+            }
+            guard let pid = frontApplicationPID() else { throw ActionError("No app is in front to move") }
+            do { return try WindowArranger.arrange(preset, pid: pid) } catch { throw ActionError(error.localizedDescription) }
+        case "apply-layout":
+            let layouts = layoutsProvider?() ?? []
+            if layouts.isEmpty { return "No saved layout yet. Save one on the Desk page" }
+            guard let layout = DeskLayout.find(step.parameter, in: layouts) else {
+                throw ActionError("No layout called \"\(step.parameter)\". Check the name on the Desk page")
+            }
+            return await DeskService.apply(layout)
         case "mission-control": try await run("/usr/bin/open", ["-a", "Mission Control"])
         case "show-desktop": KeyPoster.press(KeyPoster.Code.f11)
         case "hide-others": KeyPoster.press(KeyPoster.Code.h, flags: [.maskCommand, .maskAlternate])
@@ -223,6 +242,58 @@ final class ActionExecutor: ObservableObject {
             throw ActionError(detail)
         }
         return result
+    }
+
+    private func frontApplicationPID() -> pid_t? {
+        if let id = frontmostBundleID,
+           let app = NSRunningApplication.runningApplications(withBundleIdentifier: id).first {
+            return app.processIdentifier
+        }
+        let front = NSWorkspace.shared.frontmostApplication
+        return front?.bundleIdentifier == Bundle.main.bundleIdentifier ? nil : front?.processIdentifier
+    }
+
+    private func openApps(_ text: String) async throws -> String {
+        let names = ItemList.parse(text)
+        guard !names.isEmpty else { throw ActionError("Write the apps to open, separated by commas") }
+        var opened: [String] = []
+        var failed: [String] = []
+        for name in names {
+            do {
+                try await run("/usr/bin/open", ["-a", name])
+                opened.append(name)
+            } catch {
+                failed.append(name)
+            }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+        }
+        if opened.isEmpty { throw ActionError("Could not open \(failed.joined(separator: ", "))") }
+        return "Opened " + opened.joined(separator: ", ") + (failed.isEmpty ? "" : ". Could not open " + failed.joined(separator: ", "))
+    }
+
+    private func openItems(_ text: String) throws -> String {
+        let lines = ItemList.parse(text)
+        guard !lines.isEmpty else { throw ActionError("Write the files, folders or links to open, one per line") }
+        var opened = 0
+        var problems: [String] = []
+        for line in lines {
+            switch OpenItem.classify(line) {
+            case .link(let url):
+                NSWorkspace.shared.open(url)
+                opened += 1
+            case .path(let path):
+                if FileManager.default.fileExists(atPath: path) {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: path))
+                    opened += 1
+                } else {
+                    problems.append("\((path as NSString).lastPathComponent) was not found")
+                }
+            case .invalid(let text):
+                problems.append("\(text) is not allowed. Use a web or mail link or a full path")
+            }
+        }
+        if opened == 0 { throw ActionError(problems.first ?? "Nothing to open") }
+        return "Opened \(opened) \(opened == 1 ? "item" : "items")" + (problems.isEmpty ? "" : ". " + problems.joined(separator: ". "))
     }
 
     private func openLink(_ text: String) throws -> String {

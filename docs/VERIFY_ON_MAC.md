@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 162 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 177 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh
@@ -93,6 +93,14 @@ Turn off test mode in General first, and save your work. Then test each action o
 3. Change the condition (for example "The Mac just started" to 100000 minutes) and check again: it should now match.
 4. With test mode off, make the gesture and look at Activity: it should say "Double tap · if 1" when a branch ran.
 5. Try a second branch and "any of these". Try switching the workflow off: the gesture's own actions must remain.
+
+## 6d. Desk
+
+1. Open a few apps and arrange them. Desk, "Save current windows". The list should show those apps with sizes.
+2. Move the windows around, then press "Apply now" (Accessibility must be on). They should return. The result line says how many were arranged and which were not.
+3. Add a gesture with "Arrange the front window", position "left half". Make it with a window in front: it should snap to the left half.
+4. Add "Apply a saved window layout" with the layout name. Quit one of the apps, run the gesture: the app should open and move into place.
+5. The "Desk after restart" template: add it, and use "Check against right now". Restart the Mac and double tap soon after: apps open and arrange.
 
 ## 7. Everything else
 
