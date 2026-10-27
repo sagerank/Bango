@@ -4,11 +4,7 @@ Tap your MacBook to control it. One tap, two, three, four or five, on the palm r
 
 Free, open source (MIT), no account, no telemetry. Bango was called TapDeck until 0.14.
 
-> **Status: version 0.13.1, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
-> All the code is written and the gesture logic has 191 unit tests, but it was written on a machine
-> without a Swift toolchain, so nothing has been compiled or tried on real hardware. Expect to fix
-> compile errors on the first build. Start with [docs/VERIFY_ON_MAC.md](docs/VERIFY_ON_MAC.md).
-> Please report what you find, see [Hardware reports](#hardware-reports).
+> **Status: version 1.0.0.** The tap detector was rewritten for this release and has been checked on one real MacBook recording and on simulated signals, but it has had little time on other Macs. New installs start in test mode (gestures are logged, nothing runs) until you switch it off in General. If it misses or invents taps, open Tuning and send a [hardware report](../../issues/new?template=hardware-report.yml) with the "ignored bumps" list. See docs/VERIFY_ON_MAC.md.
 
 ## What it does
 
