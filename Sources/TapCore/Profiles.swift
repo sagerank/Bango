@@ -204,6 +204,7 @@ public struct Profile: Codable, Equatable, Identifiable, Sendable {
 public enum DefaultProfiles {
     /// Name of the profile that is built for taking screenshots.
     public static let screenshotsName = "Screenshots"
+    public static let voiceName = "Voice"
 
     private static func screenshots() -> Profile {
         func bind(_ taps: Int, _ action: String) -> GestureBinding {
@@ -237,6 +238,9 @@ public enum DefaultProfiles {
                 bind(2, "copy"),
                 bind(3, "paste"),
                 bind(4, "lock-screen"),
+            ]),
+            Profile(name: voiceName, bindings: [
+                bind(2, "dictation-toggle"),
             ]),
             Profile(name: "Media", bindings: [
                 bind(1, "play-pause"),

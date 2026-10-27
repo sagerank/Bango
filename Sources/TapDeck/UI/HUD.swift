@@ -189,6 +189,12 @@ private struct HUDVisual: View {
                 MicrophoneVisual(muted: muted)
             case .app(let name):
                 AppVisual(name: name)
+            case .dictation(let listening):
+                if listening {
+                    MicrophoneVisual(muted: false)
+                } else {
+                    PopIcon(symbol: "checkmark.circle.fill", tint: Theme.good)
+                }
             }
         }
     }

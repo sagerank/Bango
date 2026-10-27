@@ -157,6 +157,10 @@ cat > "$PLIST" <<PLISTEOF
     <key>NSSupportsSuddenTermination</key><false/>
     <key>NSAppleEventsUsageDescription</key>
     <string>TapDeck sends Apple Events only for actions you choose, such as switching dark mode or ejecting drives.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>TapDeck listens only between the two double taps of dictation, to turn your speech into text on this Mac.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>TapDeck uses on-device speech recognition to turn what you say into text. The audio does not leave this Mac.</string>
     <key>NSHumanReadableCopyright</key><string>MIT License. See LICENSE.</string>
 </dict>
 </plist>

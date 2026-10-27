@@ -242,7 +242,7 @@ final class ConfigTests: XCTestCase {
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
         XCTAssertTrue(config.hasCompletedOnboarding)
         XCTAssertEqual(config.detector, DetectorConfig())
-        XCTAssertEqual(config.profiles.count, 4)
+        XCTAssertEqual(config.profiles.count, 5)
         XCTAssertEqual(config.activeProfile.name, "Work")
     }
 

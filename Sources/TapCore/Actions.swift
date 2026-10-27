@@ -1,10 +1,11 @@
 import Foundation
 
 public enum ActionCategory: String, CaseIterable, Codable, Sendable {
-    case clipboard, media, sound, display, power, capture, apps, input, connectivity, automation
+    case voice, clipboard, media, sound, display, power, capture, apps, input, connectivity, automation
 
     public var title: String {
         switch self {
+        case .voice: return "Voice"
         case .clipboard: return "Clipboard"
         case .media: return "Media"
         case .sound: return "Sound"
@@ -35,6 +36,8 @@ public enum ActionPermission: String, Codable, Sendable {
     case accessibility
     case automation
     case screenRecording
+    /// Microphone and Speech Recognition, for dictation.
+    case dictation
 
     public var title: String {
         switch self {
@@ -42,6 +45,7 @@ public enum ActionPermission: String, Codable, Sendable {
         case .accessibility: return "Accessibility"
         case .automation: return "Automation"
         case .screenRecording: return "Screen Recording"
+        case .dictation: return "Microphone and Speech Recognition"
         }
     }
 }
@@ -97,6 +101,9 @@ public enum ActionCatalog {
     public static let noneID = "none"
 
     public static let all: [ActionDefinition] = [
+        // Voice
+        ActionDefinition("dictation-toggle", "Dictation: start or stop", symbol: "mic.fill", category: .voice, permission: .dictation),
+
         // Clipboard
         ActionDefinition("copy", "Copy", symbol: "doc.on.doc", category: .clipboard, permission: .accessibility),
         ActionDefinition("paste", "Paste", symbol: "doc.on.clipboard", category: .clipboard, permission: .accessibility),

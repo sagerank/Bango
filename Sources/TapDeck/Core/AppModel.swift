@@ -30,6 +30,11 @@ final class AppModel: ObservableObject {
         self.engine = Engine(store: store, monitor: monitor, executor: executor)
         self.updater = AppUpdater()
 
+        DictationController.shared.onMessage = { [weak self] text in
+            guard let self, self.store.config.showHUD else { return }
+            self.hud.show(Feedback(symbol: "mic.fill", title: "Dictation", detail: text, kind: .dictation(listening: false)))
+        }
+
         engine.onFeedback = { [weak self] feedback in
             guard let self, self.store.config.showHUD else { return }
             self.hud.show(feedback)

@@ -1,5 +1,7 @@
+import AVFoundation
 import AppKit
 import Foundation
+import Speech
 import TapCore
 
 /// Asks macOS for everything TapDeck can use, one item after another, and keeps the answers current.
@@ -79,6 +81,8 @@ final class PermissionCenter: ObservableObject {
     func refreshQuick() {
         var next = status
         next[.accessibility] = AccessibilityPermission.isTrusted(promptIfNeeded: false) ? .granted : .missing
+        next[.microphone] = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized ? .granted : .missing
+        next[.speechRecognition] = SFSpeechRecognizer.authorizationStatus() == .authorized ? .granted : .missing
         if ScreenCapture.hasPermission {
             next[.screenRecording] = .granted
         } else {
@@ -168,6 +172,22 @@ final class PermissionCenter: ObservableObject {
                 (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) != nil
             }.value
             if readable { defaults.set(buildID, forKey: folderGrantedKey) }
+        case .microphone:
+            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+                _ = await AVCaptureDevice.requestAccess(for: .audio)
+            } else if AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
+                note = "Microphone was refused earlier. Switch TapDeck on under Privacy & Security, Microphone."
+                Self.openSettings("Privacy_Microphone")
+            }
+        case .speechRecognition:
+            if SFSpeechRecognizer.authorizationStatus() == .notDetermined {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
+                }
+            } else if SFSpeechRecognizer.authorizationStatus() != .authorized {
+                note = "Speech Recognition was refused earlier. Switch TapDeck on under Privacy & Security, Speech Recognition."
+                Self.openSettings("Privacy_SpeechRecognition")
+            }
         case .accessibility:
             _ = AccessibilityPermission.requestIfNeeded()
             _ = await waitFor(timeout: 120) { AccessibilityPermission.isTrusted(promptIfNeeded: false) }
@@ -189,6 +209,12 @@ final class PermissionCenter: ObservableObject {
         }
     }
 
+    private static func openSettings(_ pane: String) {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     /// Polls until the condition holds, the person skips, or the time runs out.
     private func waitFor(timeout: TimeInterval, _ condition: () -> Bool) async -> Bool {
         let end = Date().addingTimeInterval(timeout)
@@ -206,7 +232,7 @@ final class PermissionCenter: ObservableObject {
     /// each permission to the exact app that received it and an updated unsigned build counts as a different app.
     func resetAll() async {
         let id = Bundle.main.bundleIdentifier ?? "app.tapdeck.TapDeck"
-        for service in ["Accessibility", "ScreenCapture", "AppleEvents", "SystemPolicyDesktopFolder", "SystemPolicyDocumentsFolder", "SystemPolicyDownloadsFolder"] {
+        for service in ["Accessibility", "ScreenCapture", "AppleEvents", "Microphone", "SpeechRecognition", "SystemPolicyDesktopFolder", "SystemPolicyDocumentsFolder", "SystemPolicyDownloadsFolder"] {
             _ = try? await ProcessRunner.run("/usr/bin/tccutil", ["reset", service, id], timeout: 10)
         }
         defaults.removeObject(forKey: screenRequestedKey)

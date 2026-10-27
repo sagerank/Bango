@@ -3,6 +3,8 @@ import Foundation
 /// One thing the app asks macOS for during setup.
 public enum SetupItem: String, CaseIterable, Identifiable, Sendable {
     case accessibility
+    case microphone
+    case speechRecognition
     case systemEvents
     case finder
     case screenRecording
@@ -14,6 +16,8 @@ public enum SetupItem: String, CaseIterable, Identifiable, Sendable {
     public var title: String {
         switch self {
         case .accessibility: return "Accessibility"
+        case .microphone: return "Microphone"
+        case .speechRecognition: return "Speech Recognition"
         case .systemEvents: return "Automation: System Events"
         case .finder: return "Automation: Finder"
         case .screenRecording: return "Screen Recording"
@@ -27,6 +31,10 @@ public enum SetupItem: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .accessibility:
             return "Lets TapDeck press keys for you: copy, paste, volume, media, brightness, lock screen, screenshots."
+        case .microphone:
+            return "Lets dictation hear you. The microphone is only on between the two double taps, and macOS shows its orange dot."
+        case .speechRecognition:
+            return "Lets dictation turn what you say into text. TapDeck uses on-device recognition, so audio stays on this Mac."
         case .systemEvents:
             return "Lets TapDeck switch dark mode."
         case .finder:
@@ -46,7 +54,7 @@ public enum PermissionPlan {
     /// The order to ask in: dialogs that answer themselves first, items that send the user to
     /// System Settings last, so the person is not bounced back and forth.
     public static let order: [SetupItem] = [
-        .systemEvents, .finder, .screenshotFolder, .accessibility, .screenRecording, .loginItem,
+        .systemEvents, .finder, .screenshotFolder, .microphone, .speechRecognition, .accessibility, .screenRecording, .loginItem,
     ]
 
     private static let screenshotsToFile: Set<String> = [
@@ -62,6 +70,8 @@ public enum PermissionPlan {
         case .none: break
         case .accessibility: out.append(.accessibility)
         case .screenRecording: out.append(.screenRecording)
+        // Typing the text into the front app uses key events, so Accessibility is needed too.
+        case .dictation: out.append(contentsOf: [.microphone, .speechRecognition, .accessibility])
         case .automation: out.append(id == "eject-all" ? .finder : .systemEvents)
         }
         if screenshotsToFile.contains(id) { out.append(.screenshotFolder) }

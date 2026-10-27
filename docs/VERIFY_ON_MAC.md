@@ -9,7 +9,7 @@ swift --version        # needs 6.0 or newer
 swift test
 ```
 
-Expected: 127 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
+Expected: 142 tests pass. TapCore uses only Foundation, so these should behave the same as on Linux.
 If a test fails, the test and the detector disagree. Tell me which one. The detector was modelled in Python and agreed with the tests, so a failure points at a Swift translation slip.
 
 ```sh
@@ -77,6 +77,14 @@ Turn off test mode in General first, and save your work. Then test each action o
 - [ ] Bluetooth toggle and audio output (need `brew install blueutil switchaudio-osx`)
 - [ ] eject drives (use a spare USB stick)
 - [ ] run a Shortcut, run a Terminal command
+
+## 6b. Dictation
+
+1. Setup: press Allow on Microphone and Speech Recognition (and Accessibility if it is not on).
+2. Gestures, Add starter profiles, then switch to the Voice profile and turn test mode off.
+3. Click into a text field (Notes, a browser box). Double tap: a "Listening" pill should appear.
+4. Say a sentence. Words should appear in the pill. Double tap again: the pill goes and the sentence is typed into the field.
+5. Try: Accessibility off (words go to the clipboard), a double tap with Microphone off (a clear message), talking for more than 2 minutes (it stops by itself).
 
 ## 7. Everything else
 

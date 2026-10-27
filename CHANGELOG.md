@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.0
+
+Step 1 of docs/PLAN_DICTATION_WORKFLOWS.md: dictation. **Compiled by CI. The microphone, the speech engine and the typing into other apps could not be tested by the author and need to be tried on a Mac.**
+
+- New action "Dictation: start or stop", in a new Voice group. The same gesture turns it on when it is off and off when it is on. TapDeck keeps the state, so it does not depend on the app in front
+- While listening a pill shows a pulsing microphone, a level meter and the words so far. It never takes focus, so the words go to the app you were using
+- Double tap again: the final words are typed into the front app. Without the Accessibility permission they are copied to the clipboard and the message says so
+- Speech is recognised on this Mac only. If the language has no on-device model the action says so and does nothing, so audio never leaves the Mac
+- Stops by itself after 2 minutes. A tap that arrives while it is starting or finishing is ignored
+- New Setup items Microphone and Speech Recognition, each with its own Allow button. The action never prompts by itself and says which one is missing
+- New "Voice" starter profile: double tap is dictation. Use "Add starter profiles" to get it in an existing setup. Other profiles are untouched
+- The app now declares microphone and speech use (Info.plist and entitlements) and Clear permissions covers both
+- 15 new tests (142 in total): on and off, ignoring taps while busy, the safety stop, cleaning and splitting typed text, the permissions the action needs
+
 ## 0.9.9
 
 Four copies of the app running at once, four sets of permission prompts, four menu bar icons, and Quit closing only one. **Compiled by CI, not yet seen on a Mac by the author.**

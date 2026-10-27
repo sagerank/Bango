@@ -6,6 +6,8 @@ public enum FeedbackKind: Equatable, Sendable {
     /// A picture was taken. `toClipboard` is true when it went to the clipboard, not a file.
     case screenshot(toClipboard: Bool)
     case microphone(muted: Bool)
+    /// Dictation started (`listening`) or finished and typed its text.
+    case dictation(listening: Bool)
     /// An app was opened. `name` is what the person typed.
     case app(name: String)
 
@@ -14,6 +16,8 @@ public enum FeedbackKind: Equatable, Sendable {
         switch actionId {
         case "mic-mute":
             return .microphone(muted: summary.localizedCaseInsensitiveContains("muted"))
+        case "dictation-toggle":
+            return .dictation(listening: summary.localizedCaseInsensitiveContains("listening"))
         case "launch-app":
             let name = parameter.trimmingCharacters(in: .whitespacesAndNewlines)
             return name.isEmpty ? .generic : .app(name: name)

@@ -30,6 +30,9 @@ final class ActionExecutor: ObservableObject {
         try checkTool(for: definition)
 
         switch step.actionId {
+        // Voice
+        case "dictation-toggle": return try await DictationController.shared.toggle()
+
         // Clipboard
         case "copy": KeyPoster.press(KeyPoster.Code.c, flags: .maskCommand)
         case "paste": KeyPoster.press(KeyPoster.Code.v, flags: .maskCommand)
@@ -127,6 +130,10 @@ final class ActionExecutor: ObservableObject {
     // MARK: - Permissions and tools
 
     private func checkPermission(for definition: ActionDefinition) throws {
+        if definition.permission == .dictation {
+            if let missing = DictationController.missingPermission() { throw ActionError(missing) }
+            return
+        }
         if definition.permission == .screenRecording {
             guard ScreenCapture.hasPermission else {
                 if Date().timeIntervalSince(lastPermissionPrompt) > 60 {
