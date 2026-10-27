@@ -209,10 +209,52 @@ struct PermissionWizard: View {
         } else if let hint = p.settingsHint {
             Text(hint).font(.caption).foregroundStyle(Theme.secondary)
         }
+        if p.items.count > 1 {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(p.items, id: \.self) { item in
+                    HStack(spacing: 8) {
+                        Image(systemName: rowSymbol(center.state(item)))
+                            .foregroundStyle(rowColor(center.state(item)))
+                        Text(item.title).font(.caption).foregroundStyle(Theme.text)
+                        Spacer(minLength: 16)
+                        Text(rowText(center.state(item))).font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                }
+            }
+            .frame(maxWidth: 300)
+        }
         if let note = center.note, !finished {
             Text(note).font(.caption).foregroundStyle(Theme.warning)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
+        }
+    }
+
+    private func rowSymbol(_ state: PermissionCenter.Status) -> String {
+        switch state {
+        case .granted: return "checkmark.circle.fill"
+        case .needsRestart, .needsApproval: return "arrow.clockwise.circle.fill"
+        case .unavailable: return "minus.circle"
+        case .missing, .unknown: return "circle.dashed"
+        }
+    }
+
+    private func rowColor(_ state: PermissionCenter.Status) -> Color {
+        switch state {
+        case .granted: return Theme.good
+        case .needsRestart, .needsApproval: return Theme.warning
+        default: return Theme.secondary
+        }
+    }
+
+    private func rowText(_ state: PermissionCenter.Status) -> String {
+        switch state {
+        case .granted: return "Allowed"
+        case .needsRestart: return "Restart needed"
+        case .needsApproval: return "Approve in Settings"
+        case .unavailable: return "Not available"
+        case .missing: return "Not allowed yet"
+        case .unknown: return "Not asked yet"
         }
     }
 

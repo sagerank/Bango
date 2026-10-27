@@ -229,18 +229,36 @@ final class PermissionCenter: ObservableObject {
             if readable { defaults.set(buildID, forKey: folderGrantedKey) }
         case .microphone:
             if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-                _ = await AVCaptureDevice.requestAccess(for: .audio)
-            } else if AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
-                note = "Microphone was refused earlier. Switch Bango on under Privacy & Security, Microphone."
+                // macOS normally answers within seconds of the person pressing Allow. If the prompt never
+                // comes, give up after a while instead of leaving setup waiting forever.
+                let answered = await Self.within(seconds: 40) { _ = await AVCaptureDevice.requestAccess(for: .audio) }
+                if !answered {
+                    note = "macOS did not show the microphone prompt. Switch Bango on under Privacy & Security, Microphone."
+                    Self.openSettings("Privacy_Microphone")
+                }
+            }
+            if AVCaptureDevice.authorizationStatus(for: .audio) == .denied
+                || AVCaptureDevice.authorizationStatus(for: .audio) == .restricted
+            {
+                note = "Microphone is off for Bango. Switch it on under Privacy & Security, Microphone."
                 Self.openSettings("Privacy_Microphone")
             }
         case .speechRecognition:
             if SFSpeechRecognizer.authorizationStatus() == .notDetermined {
-                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                    SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
+                let answered = await Self.within(seconds: 40) {
+                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                        SFSpeechRecognizer.requestAuthorization { _ in continuation.resume() }
+                    }
                 }
-            } else if SFSpeechRecognizer.authorizationStatus() != .authorized {
-                note = "Speech Recognition was refused earlier. Switch Bango on under Privacy & Security, Speech Recognition."
+                if !answered {
+                    note = "macOS did not show the speech prompt. Switch Bango on under Privacy & Security, Speech Recognition."
+                    Self.openSettings("Privacy_SpeechRecognition")
+                }
+            }
+            if SFSpeechRecognizer.authorizationStatus() == .denied
+                || SFSpeechRecognizer.authorizationStatus() == .restricted
+            {
+                note = "Speech Recognition is off for Bango. Switch it on under Privacy & Security, Speech Recognition."
                 Self.openSettings("Privacy_SpeechRecognition")
             }
         case .accessibility:
@@ -268,6 +286,21 @@ final class PermissionCenter: ObservableObject {
                 }
             } catch {
                 note = "Could not turn on open at login: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Runs `work` and gives up waiting after `seconds`. Returns false when it gave up. The work itself keeps going.
+    private static func within(seconds: Double, _ work: @escaping @Sendable () async -> Void) async -> Bool {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            let gate = OnceGate()
+            Task {
+                await work()
+                if gate.claim() { continuation.resume(returning: true) }
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                if gate.claim() { continuation.resume(returning: false) }
             }
         }
     }
@@ -317,5 +350,19 @@ final class PermissionCenter: ObservableObject {
         process.arguments = ["-c", script, "sh", String(pid), path]
         try? process.run()
         NSApp.terminate(nil)
+    }
+}
+
+/// Lets exactly one of two racing tasks win.
+private final class OnceGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var taken = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if taken { return false }
+        taken = true
+        return true
     }
 }
