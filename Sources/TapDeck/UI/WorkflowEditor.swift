@@ -41,7 +41,7 @@ struct WorkflowCard: View {
                     }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Bango macro: choose what runs with if and else").foregroundStyle(Theme.text)
+                        Text("Bingo macro: choose what runs with if and else").foregroundStyle(Theme.text)
                         Text("Run different actions depending on the time, the app in front, the battery, whether the Mac just started, and more.")
                             .font(.caption).foregroundStyle(Theme.secondary)
                     }

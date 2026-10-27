@@ -52,7 +52,7 @@ struct OnboardingView: View {
         switch step {
         case .hardware:
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Tap your Mac to control it", subtitle: "Bango turns taps on the body of your MacBook into actions: copy, paste, volume, lock screen, and more.")
+                PageHeader(title: "Tap your Mac to control it", subtitle: "Bingo turns taps on the body of your MacBook into actions: copy, paste, volume, lock screen, and more.")
                 Card {
                     VStack(alignment: .leading, spacing: 10) {
                         if monitor.isSupported && monitor.isMonitoring {
@@ -62,7 +62,7 @@ struct OnboardingView: View {
                         } else {
                             Label("No motion sensor found.", systemImage: "xmark.circle.fill").foregroundStyle(Theme.danger)
                             Text(monitor.statusMessage).font(.callout).foregroundStyle(Theme.secondary)
-                            Text("Bango needs the built-in accelerometer of an Apple Silicon MacBook. You can look around, but taps will not be detected on this Mac.")
+                            Text("Bingo needs the built-in accelerometer of an Apple Silicon MacBook. You can look around, but taps will not be detected on this Mac.")
                                 .font(.callout).foregroundStyle(Theme.secondary)
                         }
                     }
@@ -70,12 +70,12 @@ struct OnboardingView: View {
             }
         case .permissions:
             VStack(alignment: .leading, spacing: 14) {
-                PageHeader(title: "What Bango needs", subtitle: "Each line shows whether it is allowed. Press Allow on the ones you want. You can skip any of them and come back to Setup later.")
+                PageHeader(title: "What Bingo needs", subtitle: "Each line shows whether it is allowed. Press Allow on the ones you want. You can skip any of them and come back to Setup later.")
                 PermissionsPanel()
             }
         case .tryIt:
             VStack(alignment: .leading, spacing: 10) {
-                PageHeader(title: "Learn the taps", subtitle: "Follow the steps. Bango shows what it heard. Nothing will run yet.")
+                PageHeader(title: "Learn the taps", subtitle: "Follow the steps. Bingo shows what it heard. Nothing will run yet.")
                 ScrollView {
                     TapTrainerView(
                         lessons: TapLessons.basic,

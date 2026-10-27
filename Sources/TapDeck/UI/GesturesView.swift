@@ -182,7 +182,7 @@ struct GesturesView: View {
                         }
                     }
                 } label: {
-                    Label("Bango macro", systemImage: "wand.and.stars")
+                    Label("Bingo macro", systemImage: "wand.and.stars")
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
@@ -190,12 +190,12 @@ struct GesturesView: View {
         }
     }
 
-    // MARK: Bango macros
+    // MARK: Bingo macros
 
     private var macrosSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                SectionLabel(text: "Bango macros")
+                SectionLabel(text: "Bingo macros")
                 Text("Smart gestures")
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 7).padding(.vertical, 2)
@@ -203,7 +203,7 @@ struct GesturesView: View {
                     .foregroundStyle(Theme.accent)
                     .clipShape(Capsule())
             }
-            Text("A Bango macro is a gesture that does different things depending on the situation: the time of day, the app in front, the battery, or whether the Mac just started. Start from a ready-made one and change it to yours.")
+            Text("A Bingo macro is a gesture that does different things depending on the situation: the time of day, the app in front, the battery, or whether the Mac just started. Start from a ready-made one and change it to yours.")
                 .font(.callout)
                 .foregroundStyle(Theme.secondary)
 
@@ -234,7 +234,7 @@ struct GesturesView: View {
                 )
                 sheet = .edit(EditTarget(binding: blank, isNew: true, overrideID: nil))
             } label: {
-                Label("Build your own Bango macro", systemImage: "plus")
+                Label("Build your own Bingo macro", systemImage: "plus")
             }
             .buttonStyle(.pillPrimary)
         }

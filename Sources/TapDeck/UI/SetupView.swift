@@ -27,7 +27,7 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 20) {
             PageHeader(
                 title: "Setup",
-                subtitle: "Everything Bango needs from macOS, in one place. If a tap does nothing, look here first."
+                subtitle: "Everything Bingo needs from macOS, in one place. If a tap does nothing, look here first."
             )
 
             Card {
@@ -57,7 +57,7 @@ struct SetupView: View {
             Card {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel(text: "Check that dictation can type")
-                    Text("Press the button, then click into a text box in any app within 3 seconds. Bango types a short sentence there, the same way dictation does.")
+                    Text("Press the button, then click into a text box in any app within 3 seconds. Bingo types a short sentence there, the same way dictation does.")
                         .font(.callout).foregroundStyle(Theme.secondary)
                     Button("Type a test sentence in 3 seconds") { runTypingTest() }.buttonStyle(.pill)
                     if let typingTest {
@@ -87,11 +87,11 @@ struct SetupView: View {
         Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Bundle.main.bundleIdentifier {
-                typingTest = "Bango was still in front, so nothing was typed. Try again and click into another app."
+                typingTest = "Bingo was still in front, so nothing was typed. Try again and click into another app."
                 return
             }
             let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "the app in front"
-            KeyTyper.enqueue(LiveTypist.Edit(insert: "Bango typing works. "))
+            KeyTyper.enqueue(LiveTypist.Edit(insert: "Bingo typing works. "))
             typingTest = "Typed a test sentence into \(app). If you do not see it there, typing does not work in that app. Tell me which app."
         }
     }

@@ -30,7 +30,7 @@ trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/archives" "$STAGE/extracted"
 cp "$ARCHIVE" "$STAGE/archives/"
 ditto -x -k "$ARCHIVE" "$STAGE/extracted"
-APP="$STAGE/extracted/Bango.app"
+APP="$STAGE/extracted/Bingo.app"
 PLIST="$APP/Contents/Info.plist"
 
 # Read metadata from the exact bytes people will download.

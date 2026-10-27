@@ -123,7 +123,7 @@ struct TapTrainerView: View {
     private func zoneGate(_ lesson: TapLesson) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(lesson.title).font(.title2.weight(.bold)).foregroundStyle(Theme.text)
-            Text("Telling the left side from the right side needs a one-time teach-in: you tap each spot a few times so Bango learns how it feels on your Mac. It is experimental and may not work on every Mac.")
+            Text("Telling the left side from the right side needs a one-time teach-in: you tap each spot a few times so Bingo learns how it feels on your Mac. It is experimental and may not work on every Mac.")
                 .font(.callout).foregroundStyle(Theme.secondary)
             HStack {
                 Button("Teach left and right…") { showZoneSetup = true }.buttonStyle(.pillPrimary)

@@ -45,7 +45,7 @@ struct GeneralView: View {
                     set: { setLaunchAtLogin($0) }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Open Bango at login").foregroundStyle(Theme.text)
+                        Text("Open Bingo at login").foregroundStyle(Theme.text)
                         Text(LaunchAtLogin.isAvailable ? "Runs quietly in the menu bar." : "Available in the installed app, not when run from the command line.")
                             .font(.caption).foregroundStyle(Theme.secondary)
                     }
@@ -53,7 +53,7 @@ struct GeneralView: View {
                 .disabled(!LaunchAtLogin.isAvailable)
 
                 if LaunchAtLogin.needsApproval {
-                    Notice(style: .warning, text: "macOS needs you to approve Bango in System Settings, Login Items.")
+                    Notice(style: .warning, text: "macOS needs you to approve Bingo in System Settings, Login Items.")
                     Button("Open Login Items") { LaunchAtLogin.openLoginItemsSettings() }.buttonStyle(.pill)
                 }
                 if let loginError {
@@ -106,7 +106,7 @@ struct GeneralView: View {
                 SectionLabel(text: "This Mac")
                 statusLine("Accelerometer", ok: monitor.isSupported && monitor.isMonitoring, note: monitor.isSupported ? nil : monitor.statusMessage)
                 statusLine("Gyroscope", ok: monitor.hasGyroscope, note: monitor.hasGyroscope ? nil : "Not found. Tap zones may be less reliable.")
-                Text("Bango reads the motion sensors inside Apple Silicon MacBooks. Macs with Intel chips, desktop Macs and some base models may not expose them.")
+                Text("Bingo reads the motion sensors inside Apple Silicon MacBooks. Macs with Intel chips, desktop Macs and some base models may not expose them.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
         }
@@ -144,8 +144,8 @@ struct GeneralView: View {
         Card {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "About")
-                Text("Bango \(AppInfo.version)").foregroundStyle(Theme.text)
-                Text("Free and open source under the MIT license. Bango sends nothing anywhere: no analytics, no accounts, no network use apart from update checks when enabled.")
+                Text("Bingo \(AppInfo.version)").foregroundStyle(Theme.text)
+                Text("Free and open source under the MIT license. Bingo sends nothing anywhere: no analytics, no accounts, no network use apart from update checks when enabled.")
                     .font(.caption).foregroundStyle(Theme.secondary)
                 if let url = URL(string: AppInfo.repositoryURL) {
                     Link("Source code, license and issues", destination: url)

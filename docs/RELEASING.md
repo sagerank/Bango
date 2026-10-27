@@ -9,7 +9,7 @@ Only the maintainer builds signed releases, with their own Apple Developer ID. P
    ```sh
    xcrun notarytool store-credentials tapdeck-notary --apple-id you@example.com --team-id TEAMID
    ```
-3. A bundle identifier you own, for example `com.yourname.Bango`. Do not change it between releases: permissions and the login item are tied to it
+3. A bundle identifier you own, for example `com.yourname.Bingo`. Do not change it between releases: permissions and the login item are tied to it
 4. Optional, for automatic updates: a Sparkle key pair
    ```sh
    swift build            # fetches Sparkle
@@ -31,7 +31,7 @@ Only the maintainer builds signed releases, with their own Apple Developer ID. P
    export TAPDECK_REPO=you/TapDeck
    ./scripts/build.sh --release
    ```
-3. Check `dist/Bango-<version>.zip` on a second Mac: it opens with no warning and taps work
+3. Check `dist/Bingo-<version>.zip` on a second Mac: it opens with no warning and taps work
 4. Create a GitHub release tagged `v<version>` and upload the ZIP, the DMG and `appcast.xml`
 
 Nothing in the scripts publishes anything.

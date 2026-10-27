@@ -101,7 +101,7 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 IconBadge(symbol: "hand.tap", size: 38)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Bango")
+                    Text("Bingo")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.text)
                     Text("Tap your Mac")

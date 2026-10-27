@@ -74,7 +74,7 @@ struct ZonesRhythmView: View {
                         .clipShape(Capsule())
                 }
 
-                Text("Teach Bango what a tap on the left, the right and the top of your Mac feels like. Then a double tap on the left can do something different from a double tap on the right.")
+                Text("Teach Bingo what a tap on the left, the right and the top of your Mac feels like. Then a double tap on the left can do something different from a double tap on the right.")
                     .foregroundStyle(Theme.text)
 
                 if monitor.hasGyroscope {
@@ -118,7 +118,7 @@ struct ZonesRhythmView: View {
                     .disabled(!monitor.isMonitoring)
                 Text("This adds the rhythm to the current profile. To use a rhythm only in one app, open Gestures, and under that app choose Add a gesture, then Tap rhythm.")
                     .font(.caption).foregroundStyle(Theme.secondary)
-                Text("Rhythms use up to \(store.config.detector.maxTaps) taps. Long pauses make Bango wait a little longer before it decides.")
+                Text("Rhythms use up to \(store.config.detector.maxTaps) taps. Long pauses make Bingo wait a little longer before it decides.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
         }

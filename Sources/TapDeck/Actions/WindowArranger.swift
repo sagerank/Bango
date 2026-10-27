@@ -89,7 +89,7 @@ enum WindowArranger {
 
     /// Puts the front window of an app in a preset place on the screen it is on.
     static func arrange(_ preset: WindowPreset, pid: pid_t) throws -> String {
-        guard AXIsProcessTrusted() else { throw Failure("Allow Accessibility for Bango in Setup, then try again") }
+        guard AXIsProcessTrusted() else { throw Failure("Allow Accessibility for Bingo in Setup, then try again") }
         guard let window = window(of: pid) else { throw Failure("That app has no window to move") }
         if isFullScreen(window) { throw Failure("The window is full screen. Leave full screen first") }
         guard let current = frame(of: window), let screen = screen(containing: current.midX, current.midY) else {

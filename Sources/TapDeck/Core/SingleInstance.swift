@@ -1,7 +1,7 @@
 import AppKit
 import TapCore
 
-/// Makes sure only one Bango runs. A menu bar app has no Dock icon, so a copy left over from an earlier
+/// Makes sure only one Bingo runs. A menu bar app has no Dock icon, so a copy left over from an earlier
 /// install is easy to miss, and every extra copy means another menu bar icon, another round of permission
 /// prompts, a fight over the motion sensor and a Quit button that closes only the copy it was clicked in.
 enum SingleInstance {
@@ -15,11 +15,12 @@ enum SingleInstance {
         return NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { $0.processIdentifier != me }
     }
 
-    /// The app used to be called TapDeck. Close a copy that is still running under the old identity, since two
+    /// The app has had other names. Close a copy that is still running under an old identity, since two
     /// menu bar icons would fight over the motion sensor.
     static func closeLegacyApp() {
-        let old = NSRunningApplication.runningApplications(withBundleIdentifier: "app.tapdeck.TapDeck")
-        close(old)
+        for id in ["app.tapdeck.TapDeck", "app.bango.Bango"] {
+            close(NSRunningApplication.runningApplications(withBundleIdentifier: id))
+        }
     }
 
     /// At launch: close the older copies. A copy that is newer than this one will close this one, so two
@@ -35,7 +36,7 @@ enum SingleInstance {
         close(others.filter { doomed.contains($0.processIdentifier) })
     }
 
-    /// For Quit: close every other copy too, so one press really quits Bango.
+    /// For Quit: close every other copy too, so one press really quits Bingo.
     static func closeAllOtherInstances() {
         close(otherCopies())
     }

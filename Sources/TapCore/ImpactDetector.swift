@@ -65,7 +65,7 @@ public struct DetectorSnapshot: Equatable, Sendable {
     public var motionLevel = 0.0
     /// True while taps are being ignored because of typing or clicking.
     public var guarded = false
-    /// How far the newest sample stands above the ringing of the last 40 ms. A new knock on top of
+    /// How far the newest sample stands above the signal level of the last 50 ms. A new knock on top of
     /// ringing shows up as a ratio well above 1, the decaying ring itself does not.
     public var rise = 0.0
     /// Why recent bumps were ignored, counted once per bump.
@@ -124,19 +124,27 @@ public struct DetectorOutput: Sendable {
 
 /// Finds individual taps in a stream of accelerometer samples.
 ///
-/// The structure follows the nocnoc detector: a low-pass filter separates gravity and slow
-/// movement from sharp impacts, an adaptive threshold follows the noise floor, a motion
-/// lockout rejects lifting or carrying the Mac, and a brief-impulse gate rejects long
-/// vibrations. Differences: it emits single taps (grouping happens in GestureRecognizer),
-/// supports a typing guard, and collects direction features for tap zones.
+/// How it works, in the order a sample passes through it:
+///
+/// 1. **Dynamic motion.** A fast gravity follower (time constant 20 ms) is subtracted from the sample,
+///    which leaves what is moving quickly: knocks, ringing and vibration.
+/// 2. **Two envelopes.** `fast` jumps up at once and falls back over 6 ms. `slow` follows `fast` over 50 ms
+///    and stands for the recent signal level, which is the ringing left by earlier taps.
+/// 3. **Noise floor.** Every 20 ms the loudest `fast` value is put in a bucket. The floor is the lower
+///    quartile of the last 100 buckets (two seconds). Buckets that hold taps or their ringing are left out,
+///    so a burst of taps cannot raise the bar for its own next tap. The threshold sits above the floor.
+/// 4. **A tap is an abrupt jump.** `fast` has to be several times higher than it was 8 ms earlier.
+///    A first tap must also come out of calm: the 120 ms before it have to be quiet, which separates a knock from
+///    the start of a vibration. A follow-up tap lands on ringing, so it only has to stand out from the signal
+///    level instead of coming out of calm.
+/// 5. **Carrying.** A second, slow gravity follower (250 ms) is compared with where it was half a second
+///    earlier. If the Mac was tilted or lifted, taps are ignored for a while.
+/// 6. **Guard and spacing.** A tap that coincides with typing or clicking, or comes too soon after the last
+///    one, is ignored.
+///
+/// The impact is reported 60 ms after it started, once its strongest moment and direction are known.
+/// Grouping into double, triple taps and so on happens later, in `GestureRecognizer`.
 public final class ImpactDetector {
-    private struct Recent {
-        var time: Double
-        var filtered: Double
-        var lowStep: Double
-        var lowPass: Vec3
-    }
-
     private struct Pending {
         var time: Double
         var peak: Double
@@ -146,30 +154,99 @@ public final class ImpactDetector {
         var accelLen: Double = 0
     }
 
-    private static let quietWindow = 0.28
-    private static let motionWindow = 0.40
-    private static let impulseWindow = 0.14
-    private static let historyWindow = 1.5
-    private static let quietTail = 0.03
-    private static let motionTail = 0.07
-    private static let lockoutDuration = 0.9
-    /// Time for the chassis to stop ringing after an accepted tap. Real MacBook: about 0.2 s.
-    private static let tapSettleTime = 0.3
+    /// A fixed-size ring of timestamped values, so storing a sample never allocates.
+    private struct Ring<Value> {
+        private var times: [Double]
+        private var values: [Value]
+        private var start = 0
+        private(set) var count = 0
+
+        init(capacity: Int, filler: Value) {
+            times = [Double](repeating: 0, count: capacity)
+            values = [Value](repeating: filler, count: capacity)
+        }
+
+        var isEmpty: Bool { count == 0 }
+
+        mutating func removeAll() {
+            start = 0
+            count = 0
+        }
+
+        mutating func append(_ time: Double, _ value: Value) {
+            if count == times.count {
+                start = (start + 1) % times.count
+                count -= 1
+            }
+            let slot = (start + count) % times.count
+            times[slot] = time
+            values[slot] = value
+            count += 1
+        }
+
+        /// Drops entries older than `age` seconds before `now`.
+        mutating func trim(now: Double, keeping age: Double) {
+            while count > 0, now - times[start] > age {
+                start = (start + 1) % times.count
+                count -= 1
+            }
+        }
+
+        /// The entry `index` places from the oldest.
+        func entry(_ index: Int) -> (time: Double, value: Value) {
+            let slot = (start + index) % times.count
+            return (times[slot], values[slot])
+        }
+    }
+
+    // Time constants (seconds).
+    private static let gravityTau = 0.02
+    private static let fastRelease = 0.006
+    private static let slowTau = 0.05
+    private static let carryTau = 0.25
+    // Carry check.
+    private static let carryLag = 0.5
+    private static let carryLimit = 0.05
+    private static let carryHold = 0.8
+    // Noise floor.
+    private static let bucketLength = 0.02
+    private static let bucketCount = 100
+    private static let floorQuantile = 0.25
+    private static let floorFactor = 5.0
+    private static let floorOffset = 0.012
+    /// After a tap, the chassis rings for about this long. Ringing is kept out of the noise floor.
+    private static let settleTime = 0.3
+    // Tap shape.
+    private static let calmFraction = 0.35
+    private static let preCalmFraction = 0.5
+    private static let preCalmRatio = 0.4
+    private static let preWindow = 0.15
+    private static let preGap = 0.03
+    private static let firstJump = 3.0
+    private static let followJump = 2.0
+    private static let followRise = 2.0
+    private static let jumpWindow = 0.008
     public static let featureWindow = 0.06
 
-    private var lowPass = Vec3.zero
-    private var previousSample = Vec3.zero
-    private var previousLowPass = Vec3.zero
+    private var gravity = Vec3.zero
+    private var slowGravity = Vec3.zero
     private var initialized = false
-    private var lastPeak = 0.0
-    private var lastAccepted = -Double.infinity
     private var lastTime: Double?
-    private var noiseFloor = 0.01
+    private var fast = 0.0
+    private var slow = 0.0
+    private var lastAccepted = -Double.infinity
+    private var lastPeak = 0.0
     private var lockoutUntil = -Double.infinity
-    /// Recent samples. `head` is the first one still inside the history window, so dropping the oldest is free.
-    private var history: [Recent] = []
-    private var head = 0
     private var pending: Pending?
+    private var carryDrift = 0.0
+
+    private var recent = Ring<Double>(capacity: 512, filler: 0)
+    private var slowGravityHistory = Ring<Vec3>(capacity: 64, filler: .zero)
+    private var bucketStart = 0.0
+    private var bucketPeak = 0.0
+    private var bucketValues: [Double] = []
+    private var floor = 0.005
+
     private var rejections = RejectionCounts()
     private var episode: Episode?
 
@@ -180,21 +257,28 @@ public final class ImpactDetector {
         var reason: Rejection?
     }
 
-    public init() {}
+    public init() {
+        bucketValues.reserveCapacity(Self.bucketCount + 1)
+    }
 
     public func reset() {
-        lowPass = .zero
-        previousSample = .zero
-        previousLowPass = .zero
+        gravity = .zero
+        slowGravity = .zero
         initialized = false
-        lastPeak = 0
-        lastAccepted = -Double.infinity
         lastTime = nil
-        noiseFloor = 0.01
+        fast = 0
+        slow = 0
+        lastAccepted = -Double.infinity
+        lastPeak = 0
         lockoutUntil = -Double.infinity
-        history.removeAll()
-        head = 0
         pending = nil
+        carryDrift = 0
+        recent.removeAll()
+        slowGravityHistory.removeAll()
+        bucketStart = 0
+        bucketPeak = 0
+        bucketValues.removeAll(keepingCapacity: true)
+        floor = 0.005
         rejections = RejectionCounts()
         episode = nil
     }
@@ -204,166 +288,99 @@ public final class ImpactDetector {
         let sample = s.accel
 
         if !initialized {
-            lowPass = sample
-            previousSample = sample
-            previousLowPass = sample
+            gravity = sample
+            slowGravity = sample
+            bucketStart = now
             initialized = true
         }
 
         var sampleRate = 0.0
-        var elapsed = 0.01
+        var elapsed = 0.00125
         if let previous = lastTime {
             elapsed = max(now - previous, 0.0001)
             sampleRate = 1.0 / elapsed
         }
         lastTime = now
 
-        lowPass = lowPass + (sample - lowPass) * 0.08
-        let lowStep = (lowPass - previousLowPass).length
-        previousLowPass = lowPass
-        let highPass = sample - lowPass
-        let jerk = sample - previousSample
-        previousSample = sample
+        // 1. What is moving quickly.
+        gravity = gravity + (sample - gravity) * (1 - exp(-elapsed / Self.gravityTau))
+        let dynamic = sample - gravity
+        let magnitude = dynamic.length
 
-        let highPassMagnitude = highPass.length
-        let jerkMagnitude = jerk.length
-        let filtered = max(highPassMagnitude, jerkMagnitude * 0.92)
+        // 2. Envelopes. `slow` is read before this sample changes it: it is the level the tap rises from.
+        let slowBefore = slow
+        fast = max(magnitude, fast * exp(-elapsed / Self.fastRelease))
+        slow += (fast - slow) * (1 - exp(-elapsed / Self.slowTau))
+        recent.append(now, fast)
+        recent.trim(now: now, keeping: Self.preWindow)
 
-        history.append(Recent(time: now, filtered: filtered, lowStep: lowStep, lowPass: lowPass))
-        while head < history.count, now - history[head].time > Self.historyWindow {
-            head += 1
+        // 5. Carrying: has the slow gravity direction moved over the last half second?
+        slowGravity = slowGravity + (sample - slowGravity) * (1 - exp(-elapsed / Self.carryTau))
+        if slowGravityHistory.isEmpty || now - slowGravityHistory.entry(slowGravityHistory.count - 1).time >= 0.025 {
+            slowGravityHistory.append(now, slowGravity)
         }
-        // Shift the storage only now and then, so each sample costs a constant amount.
-        if head >= 2048 {
-            history.removeFirst(head)
-            head = 0
-        }
-
+        slowGravityHistory.trim(now: now, keeping: Self.carryLag)
+        carryDrift = slowGravityHistory.isEmpty ? 0 : (slowGravity - slowGravityHistory.entry(0).value).length
         let sequenceOpen = now - lastAccepted <= config.groupingWindow
-        let ringing = now - lastAccepted < Self.tapSettleTime
-        // The ringing of our own taps is not ambient noise, so it must not raise the noise floor.
-        let adaptive = (sequenceOpen || ringing)
-            ? currentThreshold(base: config.threshold)
-            : updateAdaptiveThreshold(base: config.threshold, signal: filtered, elapsed: elapsed)
-
-        // One pass over the last 0.4 s, oldest first (the order the sums were always taken in), instead of building
-        // a separate list for each question. The longest window is the motion window.
-        let settled = lastAccepted + Self.tapSettleTime
-        let impulseThreshold = adaptive * 0.55
-        let impulseFallback = sampleRate > 0 ? 1.0 / sampleRate : 0.01
-
-        var scanStart = history.count
-        while scanStart > head, now - history[scanStart - 1].time <= Self.motionWindow { scanStart -= 1 }
-
-        var quietSum = 0.0, quietCount = 0, quietMaxValue = 0.0
-        var motionSum = 0.0, motionCount = 0
-        var motionOldest: Vec3?, motionNewest: Vec3?
-        var ringPeak = 0.0
-        var impulseDuration = 0.0
-        var previousInImpulse: Double?
-        for index in scanStart..<history.count {
-            let sample = history[index]
-            let age = now - sample.time
-            // How steady it was just before: the last 0.28 s, leaving out the newest 0.03 s.
-            if age <= Self.quietWindow, age >= Self.quietTail {
-                quietSum += sample.filtered
-                quietCount += 1
-                quietMaxValue = max(quietMaxValue, sample.filtered)
-            }
-            // Whether the Mac is being carried. The ringing of our own accepted taps also moves the low-pass
-            // output, so only samples after it has settled count.
-            if age >= Self.motionTail, sample.time > settled {
-                motionSum += sample.lowStep
-                motionCount += 1
-                if motionOldest == nil { motionOldest = sample.lowPass }
-                motionNewest = sample.lowPass
-            }
-            // The level of the ringing just before now, for the rise test.
-            if age <= Self.riseWindow, age >= Self.riseTail { ringPeak = max(ringPeak, sample.filtered) }
-            // How long the bump has lasted.
-            if age <= Self.impulseWindow {
-                if sample.filtered > impulseThreshold {
-                    impulseDuration += previousInImpulse.map { max(sample.time - $0, 0) } ?? impulseFallback
-                }
-                previousInImpulse = sample.time
-            }
-        }
-        let quietAverage = quietCount == 0 ? 0 : quietSum / Double(quietCount)
-        let quietMax = quietMaxValue
-        let lowMotion = motionCount == 0 ? 0 : motionSum / Double(motionCount)
-        var drift = 0.0
-        // Measured across the window only. Using the current low-pass value would let the tap that
-        // is arriving right now (its slow component moves the output by about 0.1 g) lock itself out.
-        if let earliest = motionOldest, let latest = motionNewest {
-            drift = (latest - earliest).length
-        }
-
-        if !sequenceOpen {
-            let lowLimit = max(0.010, adaptive * 0.08)
-            let driftLimit = max(0.080, adaptive * 0.55)
-            if lowMotion > lowLimit || drift > driftLimit {
-                lockoutUntil = max(lockoutUntil, now + Self.lockoutDuration)
-            }
+        if carryDrift > Self.carryLimit, !sequenceOpen {
+            lockoutUntil = max(lockoutUntil, now + Self.carryHold)
         }
         let inLockout = now < lockoutUntil
 
-        let baselineQuiet = quietAverage < adaptive * 0.28 && quietMax < adaptive * 0.72
-        // The first tap must look like a knock: sharp and short, after a quiet moment.
-        // Follow-up taps land on top of the ringing of the previous one, so they are judged
-        // by how far they rise above that ringing.
-        let ringLevel = ringPeak
-        let rise = filtered / max(ringLevel, 0.001)
-        let sharp: Bool
-        let brief: Bool
-        // A knock jumps up from what came just before it. A vibration that builds up smoothly does not.
-        let abrupt = rise > Self.riseRatio
-        if sequenceOpen {
-            sharp = abrupt
-            brief = true
-        } else {
-            sharp = abrupt && (jerkMagnitude > adaptive * 0.70 || jerkMagnitude > highPassMagnitude * 0.90)
-            brief = impulseDuration <= 0.08
-        }
-        let passesSequence = sequenceOpen || baselineQuiet
+        // 3. Noise floor and threshold.
+        updateFloor(now: now)
+        let threshold = max(config.threshold, floor * Self.floorFactor + Self.floorOffset)
+
+        // 4. Is this an abrupt jump?
         let guarded = config.guardEnabled && s.inputIdle < config.guardWindow
-        let cooldown = max(config.cooldown, Self.featureWindow + 0.01)
-        let cooled = now - lastAccepted >= cooldown
-
+        let spacing = max(config.cooldown, Self.featureWindow + 0.01)
+        let spaced = now - lastAccepted >= spacing
         var accepted = false
-        if filtered > adaptive,
-           cooled,
-           !inLockout,
-           passesSequence,
-           sharp,
-           brief,
-           !guarded,
-           pending == nil
-        {
-            lastAccepted = now
-            lastPeak = filtered
-            pending = Pending(time: now, peak: filtered)
-            accepted = true
-        }
+        var blocker: Rejection?
 
-        let blocker: Rejection? = {
-            if guarded { return .typing }
-            if inLockout { return .motion }
-            if !cooled { return .cooldown }
-            if !passesSequence { return .notQuiet }
-            if !sharp { return .notSharp }
-            if !brief { return .tooLong }
-            return nil
-        }()
+        if pending == nil, fast > threshold {
+            if guarded {
+                blocker = .typing
+            } else if inLockout {
+                blocker = .motion
+            } else if !spaced {
+                blocker = .cooldown
+            } else {
+                let jumpFactor = sequenceOpen ? Self.followJump : Self.firstJump
+                let jumped = fast >= jumpFactor * max(valueBefore(now: now), 0.0001)
+                if !jumped {
+                    blocker = .notSharp
+                } else if sequenceOpen {
+                    if fast >= Self.followRise * max(slowBefore, 0.0001) {
+                        accepted = true
+                    } else {
+                        blocker = .notSharp
+                    }
+                } else if slowBefore < threshold * Self.calmFraction,
+                          quietBefore(now: now) < min(threshold * Self.preCalmFraction, Self.preCalmRatio * fast)
+                {
+                    accepted = true
+                } else {
+                    blocker = .notQuiet
+                }
+            }
+            if accepted {
+                lastAccepted = now
+                lastPeak = fast
+                pending = Pending(time: now, peak: fast)
+            }
+        }
         // Wiggles in the ringing of a tap we just accepted are not separate bumps worth reporting.
+        let ringing = now - lastAccepted < Self.settleTime
         let ringWiggle = ringing && (blocker == .notSharp || blocker == .cooldown)
         trackRejections(
-            filtered: filtered, threshold: adaptive, accepted: accepted,
+            fast: fast, threshold: threshold, accepted: accepted,
             blocker: ringWiggle ? nil : blocker
         )
 
         var impact: Impact?
         if var p = pending {
-            p.peak = max(p.peak, filtered)
+            p.peak = max(p.peak, fast)
             if let g = s.gyro {
                 let length = g.length
                 if length > p.gyroLen {
@@ -371,9 +388,9 @@ public final class ImpactDetector {
                     p.gyroLen = length
                 }
             }
-            if highPassMagnitude > p.accelLen {
-                p.accel = highPass
-                p.accelLen = highPassMagnitude
+            if magnitude > p.accelLen {
+                p.accel = dynamic
+                p.accelLen = magnitude
             }
             if now - p.time >= Self.featureWindow {
                 lastPeak = p.peak
@@ -393,52 +410,70 @@ public final class ImpactDetector {
         snapshot.y = sample.y
         snapshot.z = sample.z
         snapshot.magnitude = sample.length
-        snapshot.filteredMagnitude = filtered
-        snapshot.threshold = adaptive
+        snapshot.filteredMagnitude = fast
+        snapshot.threshold = threshold
         snapshot.sampleRate = sampleRate
         snapshot.lastPeak = lastPeak
-        snapshot.noiseFloor = noiseFloor
-        snapshot.motionLevel = max(lowMotion, drift)
+        snapshot.noiseFloor = floor
+        snapshot.motionLevel = carryDrift
         snapshot.guarded = guarded
-        snapshot.rise = rise
+        snapshot.rise = fast / max(slowBefore, 0.001)
         snapshot.rejections = rejections
         return DetectorOutput(snapshot: snapshot, impact: impact)
     }
 
     // MARK: - Helpers
 
-    /// A follow-up tap must reach this many times the ringing level of the previous 40 ms.
-    /// Measured on a real MacBook (800 Hz): taps peak at 2.1 to 3.0, ringing alone stays below 1.0.
-    private static let riseRatio = 1.5
-    private static let riseWindow = 0.04
-    private static let riseTail = 0.004
-
-    private func currentThreshold(base: Double) -> Double {
-        max(base, noiseFloor * 3.2 + 0.015)
+    /// The `fast` value from about 8 ms ago (the newest entry at least that old, or the oldest there is).
+    private func valueBefore(now: Double) -> Double {
+        var index = recent.count - 1
+        while index > 0, now - recent.entry(index).time < Self.jumpWindow { index -= 1 }
+        return index >= 0 ? recent.entry(index).value : fast
     }
 
-    /// Counts one rejection per bump that crossed the threshold but never became a tap.
-    private func trackRejections(filtered: Double, threshold: Double, accepted: Bool, blocker: Rejection?) {
-        if filtered > threshold {
-            var e = episode ?? Episode()
-            if accepted { e.accepted = true }
-            if let blocker, filtered >= e.peak {
-                e.peak = filtered
-                e.reason = blocker
-            }
-            episode = e
-        } else if filtered < threshold * 0.5, let e = episode {
-            if !e.accepted, let reason = e.reason { rejections.record(reason) }
-            episode = nil
+    /// The loudest `fast` value in the 120 ms that ended 30 ms ago.
+    private func quietBefore(now: Double) -> Double {
+        var loudest = 0.0
+        var index = recent.count - 1
+        while index >= 0 {
+            let e = recent.entry(index)
+            if now - e.time >= Self.preGap { loudest = max(loudest, e.value) }
+            index -= 1
+        }
+        return loudest
+    }
+
+    /// Closes a 20 ms bucket now and then, and takes the floor from the quieter buckets.
+    private func updateFloor(now: Double) {
+        bucketPeak = max(bucketPeak, fast)
+        guard now - bucketStart >= Self.bucketLength else { return }
+        let ringing = now - lastAccepted < Self.settleTime
+        // Buckets that hold a tap, or the ringing after one, say nothing about the room.
+        if !ringing, bucketPeak <= floor * 3 + 0.03 {
+            bucketValues.append(bucketPeak)
+            if bucketValues.count > Self.bucketCount { bucketValues.removeFirst() }
+        }
+        bucketPeak = 0
+        bucketStart = now
+        if !bucketValues.isEmpty {
+            let sorted = bucketValues.sorted()
+            floor = sorted[min(Int(Double(sorted.count) * Self.floorQuantile), sorted.count - 1)]
         }
     }
 
-    /// The floor follows the signal with a time constant of about 0.33 s whatever the sample rate.
-    /// (A fixed per-sample step made it 8 times too fast at the 800 Hz of a real MacBook.)
-    private func updateAdaptiveThreshold(base: Double, signal: Double, elapsed: Double) -> Double {
-        let capped = min(signal, max(base * 0.9, noiseFloor * 2.5))
-        let blend = 1 - pow(0.97, elapsed / 0.01)
-        noiseFloor += (capped - noiseFloor) * blend
-        return max(base, noiseFloor * 3.2 + 0.015)
+    /// Counts one rejection per bump that crossed the threshold but never became a tap.
+    private func trackRejections(fast: Double, threshold: Double, accepted: Bool, blocker: Rejection?) {
+        if fast > threshold {
+            var e = episode ?? Episode()
+            if accepted { e.accepted = true }
+            if let blocker, fast >= e.peak {
+                e.peak = fast
+                e.reason = blocker
+            }
+            episode = e
+        } else if fast < threshold * 0.5, let e = episode {
+            if !e.accepted, let reason = e.reason { rejections.record(reason) }
+            episode = nil
+        }
     }
 }

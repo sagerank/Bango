@@ -2,6 +2,7 @@ import AppKit
 import CoreServices
 import Foundation
 
+/// The Automation permission: whether Bingo may send Apple events to another app such as System Events.
 enum AutomationPermission {
     enum Status: Equatable {
         case granted
@@ -12,92 +13,64 @@ enum AutomationPermission {
 
     static let systemEvents = "com.apple.systemevents"
     static let finder = "com.apple.finder"
-    private static let settingsURL = URL(
-        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
-    )!
+    private static let settingsPage = "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
 
+    /// The current answer, without showing a dialog. The target app is started if it is not running,
+    /// because macOS only answers for a running app.
     static func currentStatus(for target: String = systemEvents) async -> Status {
-        await determineStatus(target: target, askUserIfNeeded: false)
+        await ask(about: target, prompt: false, launchIfNeeded: true)
     }
 
-    /// Asks macOS without starting the target app and without prompting. Nil when the target is not running,
-    /// because macOS cannot answer for an app that is not there.
+    /// Like `currentStatus`, but never starts the app. Nil when it is not running.
     static func quietStatus(for target: String) async -> Status? {
-        guard !NSRunningApplication.runningApplications(withBundleIdentifier: target).isEmpty else { return nil }
-        return await determineStatus(target: target, askUserIfNeeded: false)
+        guard isRunning(target) else { return nil }
+        return await ask(about: target, prompt: false, launchIfNeeded: false)
     }
 
+    /// Shows macOS's own dialog when the person has not answered yet.
     static func requestIfNeeded(for target: String = systemEvents) async -> Status {
-        await determineStatus(target: target, askUserIfNeeded: true)
+        await ask(about: target, prompt: true, launchIfNeeded: true)
     }
 
     static func openSystemSettings() {
-        NSWorkspace.shared.open(settingsURL)
+        if let page = URL(string: settingsPage) { NSWorkspace.shared.open(page) }
     }
 
-    private static func determineStatus(target targetBundleIdentifier: String, askUserIfNeeded: Bool) async -> Status {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(returning: determineStatusOnWorker(target: targetBundleIdentifier, askUserIfNeeded: askUserIfNeeded))
-            }
-        }
+    // MARK: - Implementation
+
+    private static func isRunning(_ bundleID: String) -> Bool {
+        !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
     }
 
-    private static func determineStatusOnWorker(target targetBundleIdentifier: String, askUserIfNeeded: Bool) -> Status {
-        guard ensureIsRunning(targetBundleIdentifier) else { return .unavailable }
-
-        var target = AEAddressDesc()
-        let bundleIDData = Data(targetBundleIdentifier.utf8)
-        let createStatus = bundleIDData.withUnsafeBytes { bytes in
-            AECreateDesc(
-                DescType(typeApplicationBundleID),
-                bytes.baseAddress,
-                bundleIDData.count,
-                &target
+    private static func ask(about bundleID: String, prompt: Bool, launchIfNeeded: Bool) async -> Status {
+        if launchIfNeeded, !(await startIfNeeded(bundleID)) { return .unavailable }
+        // The system call can wait for the person to answer a dialog, so it must not run on the main thread.
+        return await Task.detached(priority: .userInitiated) { () -> Status in
+            let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
+            guard let address = target.aeDesc else { return .unavailable }
+            let result = AEDeterminePermissionToAutomateTarget(
+                address, AEEventClass(typeWildCard), AEEventID(typeWildCard), prompt
             )
-        }
-
-        guard createStatus == noErr else { return .unavailable }
-        defer { AEDisposeDesc(&target) }
-
-        let status = AEDeterminePermissionToAutomateTarget(
-            &target,
-            AEEventClass(typeWildCard),
-            AEEventID(typeWildCard),
-            askUserIfNeeded
-        )
-
-        switch status {
-        case noErr:
-            return .granted
-        case OSStatus(errAEEventWouldRequireUserConsent):
-            return .notDetermined
-        case OSStatus(errAEEventNotPermitted):
-            return .denied
-        default:
-            return .unavailable
-        }
+            switch result {
+            case noErr: return .granted
+            case OSStatus(errAEEventWouldRequireUserConsent): return .notDetermined
+            case OSStatus(errAEEventNotPermitted): return .denied
+            default: return .unavailable
+            }
+        }.value
     }
 
-    private static func ensureIsRunning(_ targetBundleIdentifier: String) -> Bool {
-        if !NSRunningApplication.runningApplications(withBundleIdentifier: targetBundleIdentifier).isEmpty {
-            return true
+    /// Starts the app in the background and waits up to five seconds for it to show up.
+    private static func startIfNeeded(_ bundleID: String) async -> Bool {
+        if isRunning(bundleID) { return true }
+        guard let location = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return false }
+        let settings = NSWorkspace.OpenConfiguration()
+        settings.activates = false
+        NSWorkspace.shared.openApplication(at: location, configuration: settings, completionHandler: nil)
+        for _ in 0..<25 {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            if isRunning(bundleID) { return true }
         }
-
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: targetBundleIdentifier) else {
-            return false
-        }
-
-        let semaphore = DispatchSemaphore(value: 0)
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-        configuration.createsNewApplicationInstance = false
-
-        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
-            semaphore.signal()
-        }
-
-        _ = semaphore.wait(timeout: .now() + 5)
-        return !NSRunningApplication.runningApplications(withBundleIdentifier: targetBundleIdentifier).isEmpty
+        return false
     }
 }

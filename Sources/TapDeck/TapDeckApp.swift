@@ -13,7 +13,7 @@ struct TapDeckApp: App {
     }
 
     var body: some Scene {
-        Window("Bango", id: "main") {
+        Window("Bingo", id: "main") {
             DashboardView()
                 .environmentObject(model)
                 .environmentObject(model.store)

@@ -1,22 +1,19 @@
 # Third-party notices
 
-## nocnoc (shaircast/nocnoc)
+## History
 
-Parts of this project are derived from nocnoc: the structure of the impact
-detector (adaptive threshold, motion lockout, brief-impulse gate), the
-IOKit HID reading of the AppleSPUHIDDevice accelerometer, the Sparkle updater
-wrapper, and the Accessibility and Automation permission helpers.
-
-nocnoc's README declares the MIT license. At the time of the fork the repository
-contained no LICENSE file and no copyright line. Before the first public release
-the maintainers must confirm the license and holder with the nocnoc author, add
-their notice here, and replace this paragraph.
+Bingo started as a prototype built on top of an existing open source menu bar app (nocnoc,
+shaircast/nocnoc), which has no license file. The tap detector, the update wrapper and the permission helpers
+that came from that starting point have since been rewritten from scratch with a different design, and the
+published history of this repository starts after that rewrite. Bingo's detector is built on a jump-and-ringing
+model of its own (see docs/ARCHITECTURE.md). The maintainers thank the nocnoc author for the idea of reading the
+Mac's motion sensor from a menu bar app.
 
 ## olvvier/apple-silicon-accelerometer (MIT)
 
 The AppleSPU device identifiers and report layout (vendor usage page 0xFF00,
 usage 3 for the accelerometer, usage 9 for the gyroscope, 22-byte reports with
-Q16.16 values) come from this research project. Bango has not yet confirmed
+Q16.16 values) come from this research project. Bingo has not yet confirmed
 the gyroscope details on real hardware (see docs/HARDWARE.md).
 
     MIT License

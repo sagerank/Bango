@@ -16,7 +16,7 @@ struct ActivityView: View {
         VStack(alignment: .leading, spacing: 20) {
             PageHeader(
                 title: "Activity",
-                subtitle: "What Bango saw, and what it did about it. Kept in memory only, cleared when you quit."
+                subtitle: "What Bingo saw, and what it did about it. Kept in memory only, cleared when you quit."
             )
 
             Card(padding: 8) {
@@ -113,7 +113,7 @@ struct ActivityView: View {
         }
         let panel = NSSavePanel()
         panel.title = "Save recording"
-        panel.nameFieldStringValue = "bango-recording.csv"
+        panel.nameFieldStringValue = "bingo-recording.csv"
         panel.allowedContentTypes = [.commaSeparatedText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
@@ -141,7 +141,7 @@ struct ActivityView: View {
             labMessage = (.info, "Replayed \(samples.count) samples with your current settings.")
         } catch let error as RecordingError {
             switch error {
-            case .badHeader: labMessage = (.danger, "That file is not a Bango recording.")
+            case .badHeader: labMessage = (.danger, "That file is not a Bingo recording.")
             case .badRow(let line): labMessage = (.danger, "Line \(line) of the file could not be read.")
             }
         } catch {

@@ -2,59 +2,59 @@ import Combine
 import Foundation
 import Sparkle
 
+/// Checks for new versions with Sparkle. It does nothing unless the build carries its own update feed
+/// and signing key, so a fork can never poll somebody else's feed.
 @MainActor
-// Sparkle calls user-driver delegates on the main thread; the Objective-C
-// protocol does not carry that isolation annotation into Swift 6.
-final class AppUpdater: NSObject, ObservableObject, @preconcurrency SPUStandardUserDriverDelegate {
+final class AppUpdater: NSObject, ObservableObject {
     @Published private(set) var canCheckForUpdates = false
     @Published private(set) var automaticallyChecksForUpdates = false
+    /// The version number of an update that is waiting, for the badge in the menu bar window.
     @Published private(set) var availableVersion: String?
 
-    private var updaterController: SPUStandardUpdaterController?
+    private var controller: SPUStandardUpdaterController?
+    private var subscriptions = Set<AnyCancellable>()
 
-    var isAvailable: Bool { updaterController != nil }
+    var isAvailable: Bool { controller != nil }
 
     override init() {
         super.init()
+        guard isConfigured else { return }
 
-        // `swift run` has no application bundle to replace or updater configuration.
-        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
-        // Updates are off unless the build was given its own feed and signing key.
-        // A fork must never poll somebody else's feed.
-        let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String ?? ""
-        let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String ?? ""
-        guard !feed.isEmpty, !key.isEmpty else { return }
+        let created = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: self)
+        controller = created
+        created.updater.publisher(for: \.canCheckForUpdates)
+            .sink { [weak self] in self?.canCheckForUpdates = $0 }
+            .store(in: &subscriptions)
+        created.updater.publisher(for: \.automaticallyChecksForUpdates)
+            .sink { [weak self] in self?.automaticallyChecksForUpdates = $0 }
+            .store(in: &subscriptions)
+        created.startUpdater()
+    }
 
-        let controller = SPUStandardUpdaterController(
-            startingUpdater: false,
-            updaterDelegate: nil,
-            userDriverDelegate: self
-        )
-        updaterController = controller
-        controller.updater.publisher(for: \.canCheckForUpdates)
-            .assign(to: &$canCheckForUpdates)
-        controller.updater.publisher(for: \.automaticallyChecksForUpdates)
-            .assign(to: &$automaticallyChecksForUpdates)
-        controller.startUpdater()
+    /// An app bundle, a feed address and a public key are all needed. `swift run` has no bundle.
+    private var isConfigured: Bool {
+        guard Bundle.main.bundleURL.pathExtension == "app" else { return false }
+        func text(_ key: String) -> String { Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "" }
+        return !text("SUFeedURL").isEmpty && !text("SUPublicEDKey").isEmpty
     }
 
     func checkForUpdates() {
         guard canCheckForUpdates else { return }
-        updaterController?.checkForUpdates(nil)
+        controller?.checkForUpdates(nil)
     }
 
     func setAutomaticallyChecksForUpdates(_ enabled: Bool) {
-        updaterController?.updater.automaticallyChecksForUpdates = enabled
+        controller?.updater.automaticallyChecksForUpdates = enabled
     }
+}
 
-    // Keep scheduled updates visible in the menu bar UI even when Sparkle's
-    // update window appears behind other apps for this dockless application.
+// An app without a Dock icon can have Sparkle's window appear behind other windows, so scheduled updates are
+// announced through the app's own interface instead.
+extension AppUpdater: @preconcurrency SPUStandardUserDriverDelegate {
     var supportsGentleScheduledUpdateReminders: Bool { true }
 
     func standardUserDriverWillHandleShowingUpdate(
-        _ handleShowingUpdate: Bool,
-        forUpdate update: SUAppcastItem,
-        state: SPUUserUpdateState
+        _ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState
     ) {
         availableVersion = update.displayVersionString
     }

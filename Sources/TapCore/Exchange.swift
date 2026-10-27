@@ -6,7 +6,7 @@ public enum ExchangeError: Error, Equatable {
 
     public var message: String {
         switch self {
-        case .notAProfile: return "This file is not a Bango profile."
+        case .notAProfile: return "This file is not a Bingo profile."
         case .unsupportedVersion(let v): return "This profile was made by a newer version (format \(v))."
         }
     }

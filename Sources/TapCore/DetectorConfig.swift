@@ -1,7 +1,7 @@
 import Foundation
 
-/// Tunable detection settings. The starting values come from the nocnoc detector and still
-/// need confirming on real hardware, which is what the Tuning screen and calibration are for.
+/// Tunable detection settings. The starting values were checked on one real MacBook recording and still
+/// need confirming on other models, which is what the Tuning screen and calibration are for.
 public struct DetectorConfig: Codable, Equatable, Sendable {
     /// Minimum filtered acceleration (g) for a tap. The detector raises this in noisy conditions.
     public var threshold: Double

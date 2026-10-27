@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.0
+
+- **Renamed to Bingo** (from Bango). Settings are carried over from the Bango and TapDeck folders on first start. macOS treats this as a new app, so Accessibility, Screen Recording and Automation have to be allowed again, and a copy of Bango that is still running is closed.
+- **New tap detector, written from scratch.** The old one followed the structure of the open source app this project started from. The new one works on two signal envelopes: a tap is an abrupt jump above the recent level. It also uses a bucketed noise floor and a slow-gravity check for carrying. Checked on the real 26-tap MacBook recording (all taps found within 30 ms, also at half the sample rate), on the existing synthetic tests, and on 1,836 generated cases across seeds, spacings, strengths and ring lengths.
+- **Update wrapper and permission helpers rewritten** in new code (Sparkle, Accessibility, Automation).
+- Notices now say plainly where the project began and what was rewritten.
+- **Not yet run on a Mac:** nothing in this version has been compiled. Run `swift test` first.
+
 ## 0.14.1
 
 - Tap rhythms: matching now allows normal human timing. The same rhythm played a bit faster or slower still counts, and each gap may be off by half its length (at least 80 ms). What must stay the same is the pattern of short and long gaps. Before, a rhythm was missed unless every gap landed within about 35 percent, and a miss quietly ran the plain tap-count action instead.

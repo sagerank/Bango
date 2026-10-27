@@ -51,7 +51,7 @@ final class SensorService {
     /// Called on the sensor queue for every accelerometer report.
     var onSample: (@Sendable (SensorSample) -> Void)?
 
-    private let queue = DispatchQueue(label: "app.bango.sensors", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "app.bingo.sensors", qos: .userInteractive)
     private var handles: [Handle] = []
     private var running = false
     private(set) var hasGyroscope = false
