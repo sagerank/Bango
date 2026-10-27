@@ -18,7 +18,7 @@ final class ActionExecutor: ObservableObject {
 
     private var caffeineAssertion = IOPMAssertionID(0)
     private var lastInputVolume = 75
-    /// The app that was in front before Bingo's own window, set by the engine, for "Arrange the front window".
+    /// The app that was in front before Bango's own window, set by the engine, for "Arrange the front window".
     var frontmostBundleID: String?
     /// Saved window layouts, read when "Apply a saved window layout" runs.
     var layoutsProvider: (() -> [DeskLayout])?
@@ -159,7 +159,7 @@ final class ActionExecutor: ObservableObject {
                     lastPermissionPrompt = Date()
                     ScreenCapture.requestPermission()
                 }
-                throw ActionError("Allow Bingo under Privacy & Security, Screen Recording, then quit and reopen Bingo")
+                throw ActionError("Allow Bango under Privacy & Security, Screen Recording, then quit and reopen Bango")
             }
             return
         }
@@ -170,7 +170,7 @@ final class ActionExecutor: ObservableObject {
             lastPermissionPrompt = Date()
             _ = AccessibilityPermission.requestIfNeeded()
         }
-        throw ActionError("Allow Bingo under Privacy & Security, Accessibility, then try again")
+        throw ActionError("Allow Bango under Privacy & Security, Accessibility, then try again")
     }
 
     private func checkTool(for definition: ActionDefinition) throws {
@@ -236,7 +236,7 @@ final class ActionExecutor: ObservableObject {
         }
         guard result.status == 0 else {
             if result.error.contains("not allowed") || result.error.contains("-1743") {
-                throw ActionError("Allow Bingo under Privacy & Security, Automation, then try again")
+                throw ActionError("Allow Bango under Privacy & Security, Automation, then try again")
             }
             let detail = result.error.isEmpty ? "exit status \(result.status)" : result.error
             throw ActionError(detail)
@@ -335,7 +335,7 @@ final class ActionExecutor: ObservableObject {
         let status = IOPMAssertionCreateWithName(
             kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "Bingo keep awake" as CFString,
+            "Bango keep awake" as CFString,
             &id
         )
         guard status == kIOReturnSuccess else {

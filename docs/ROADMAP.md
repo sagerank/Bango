@@ -1,4 +1,4 @@
-# Bingo roadmap
+# Bango roadmap
 
 ## Status (version 0.13.1)
 
@@ -22,7 +22,7 @@ audit; contributor hardware reports (docs/HARDWARE.md starts empty).
 
 Blocking items: 3 (update feed) and 4 (rename) are done in code. 1 (licence) and 2 (provenance) were
 handled by rewriting the detector, the update wrapper and the permission helpers from scratch (0.15.0), so no
-code from the original base remains. The final name is Bingo; check it for trademark and App Store clashes
+code from the original base remains. The final name is Bango; check it for trademark and App Store clashes
 before a public release.
 
 The text below is the original plan, kept for reference.

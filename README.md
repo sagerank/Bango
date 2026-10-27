@@ -1,8 +1,8 @@
-# Bingo
+# Bango
 
 Tap your MacBook to control it. One tap, two, three, four or five, on the palm rest or the lid, and the action you chose runs: copy, paste, volume, play and pause, lock the screen, screenshot, keep the Mac awake, run a Shortcut, and more.
 
-Free, open source (MIT), no account, no telemetry. Bingo was called TapDeck until 0.14.
+Free, open source (MIT), no account, no telemetry. Bango was called TapDeck until 0.14.
 
 > **Status: version 0.13.1, only partly tested on a Mac.** The first build recognised only single taps on real hardware. 0.9.2 finds all 26 taps in one recording from a real MacBook when replayed, but has not yet been run live in the app. If it still misses taps, see docs/VERIFY_ON_MAC.md.
 > All the code is written and the gesture logic has 191 unit tests, but it was written on a machine
@@ -31,7 +31,7 @@ Free, open source (MIT), no account, no telemetry. Bingo was called TapDeck unti
 
 ## Requirements
 
-- A MacBook with an Apple Silicon chip. Bingo reads the built-in motion sensor, which Intel Macs and desktop Macs do not expose in the same way. M2 and newer are the expected targets, and base M1 support is unconfirmed
+- A MacBook with an Apple Silicon chip. Bango reads the built-in motion sensor, which Intel Macs and desktop Macs do not expose in the same way. M2 and newer are the expected targets, and base M1 support is unconfirmed
 - macOS 14 or newer
 - To build: Xcode 16 or newer (or the Swift 6 toolchain)
 
@@ -41,27 +41,27 @@ Free, open source (MIT), no account, no telemetry. Bingo was called TapDeck unti
 git clone https://github.com/your-name/TapDeck.git
 cd TapDeck
 swift test                       # 66 tests, no Mac sensor needed
-./scripts/build.sh --unsigned    # creates dist/Bingo.app and an installer DMG, signed for this Mac only
-open dist/Bingo.app
+./scripts/build.sh --unsigned    # creates dist/Bango.app and an installer DMG, signed for this Mac only
+open dist/Bango.app
 ```
 
 If macOS refuses to open the app, right-click it, choose Open, then Open again.
 
 For your own bundle identifier: `TAPDECK_BUNDLE_ID=com.yourname.TapDeck ./scripts/build.sh --unsigned`. macOS ties permissions to the bundle identifier, so keep it stable once you have granted them.
 
-Signed and notarized builds, and optional automatic updates, need your own Apple Developer ID. See [docs/RELEASING.md](docs/RELEASING.md). Bingo is not on the Mac App Store and cannot be: reading the motion sensor uses an undocumented system interface that App Store rules do not allow.
+Signed and notarized builds, and optional automatic updates, need your own Apple Developer ID. See [docs/RELEASING.md](docs/RELEASING.md). Bango is not on the Mac App Store and cannot be: reading the motion sensor uses an undocumented system interface that App Store rules do not allow.
 
 ## Permissions
 
 | Permission | Why | When it is asked |
 |---|---|---|
 | Accessibility | To press keys for you: copy, paste, media keys, lock screen | First time such an action runs, or from General |
-| Screen Recording | Only for the "Full screen", "Area" and "Window" capture actions that save, copy or mark up a picture | First time one of those runs. Quit and reopen Bingo after allowing it |
+| Screen Recording | Only for the "Full screen", "Area" and "Window" capture actions that save, copy or mark up a picture | First time one of those runs. Quit and reopen Bango after allowing it |
 | Microphone and Speech Recognition | Only for the dictation action. The microphone is on only between the two double taps | When you press Allow in Setup |
 | Automation | Only for dark mode and ejecting drives | First time one of those runs |
 | Login Items | Only if you turn on Open at login | When you turn it on |
 
-Nothing is requested until you press Allow in Setup. Bingo needs Screen Recording only for the capture actions and Microphone and Speech Recognition only for dictation. It never asks for Input Monitoring or Camera.
+Nothing is requested until you press Allow in Setup. Bango needs Screen Recording only for the capture actions and Microphone and Speech Recognition only for dictation. It never asks for Input Monitoring or Camera.
 
 ## Privacy
 
@@ -69,7 +69,7 @@ Everything stays on your Mac. Dictation uses on-device recognition and refuses t
 
 ## Hardware reports
 
-Sensor access differs between Mac models and macOS versions, and I could not test any of them. If you try Bingo, a [hardware report](../../issues/new?template=hardware-report.yml) with your model, what General shows under "This Mac", and how tapping behaves is the most useful thing you can send. Results go into [docs/HARDWARE.md](docs/HARDWARE.md).
+Sensor access differs between Mac models and macOS versions, and I could not test any of them. If you try Bango, a [hardware report](../../issues/new?template=hardware-report.yml) with your model, what General shows under "This Mac", and how tapping behaves is the most useful thing you can send. Results go into [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Known limits
 
@@ -93,4 +93,4 @@ More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Contributions are welcome:
 
 ## Credits and license
 
-MIT, see [LICENSE](LICENSE). Bingo uses the sensor research of [olvvier/apple-silicon-accelerometer](https://github.com/olvvier/apple-silicon-accelerometer) and the [Sparkle](https://sparkle-project.org) update framework. Details and license texts in [NOTICE.md](NOTICE.md).
+MIT, see [LICENSE](LICENSE). Bango uses the sensor research of [olvvier/apple-silicon-accelerometer](https://github.com/olvvier/apple-silicon-accelerometer) and the [Sparkle](https://sparkle-project.org) update framework. Details and license texts in [NOTICE.md](NOTICE.md).

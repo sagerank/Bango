@@ -2,7 +2,7 @@
 
 Thank you. The most valuable contributions right now are, in order:
 
-1. **Hardware reports**: try Bingo on your Mac and fill in the [hardware report](../../issues/new?template=hardware-report.yml)
+1. **Hardware reports**: try Bango on your Mac and fill in the [hardware report](../../issues/new?template=hardware-report.yml)
 2. **Recordings of problems**: missed taps or false triggers, as a CSV from Activity, Lab
 3. **Compile fixes and bug fixes**: the app was first written without a compiler, so the first Mac builds will find errors
 4. New actions, tests, translations, accessibility
@@ -16,7 +16,7 @@ swift test
 ./scripts/build.sh --unsigned
 ```
 
-TapCore (the logic) also builds and tests on Linux. The Bingo app target needs macOS 14 and Swift 6.
+TapCore (the logic) also builds and tests on Linux. The Bango app target needs macOS 14 and Swift 6.
 
 ## Ground rules
 

@@ -1,6 +1,6 @@
 # Hardware compatibility
 
-Bingo reads the built-in motion sensors of Apple Silicon MacBooks through an undocumented system interface (`AppleSPUHIDDevice`, vendor usage page 0xFF00, usage 3 for the accelerometer and usage 9 for the gyroscope).
+Bango reads the built-in motion sensors of Apple Silicon MacBooks through an undocumented system interface (`AppleSPUHIDDevice`, vendor usage page 0xFF00, usage 3 for the accelerometer and usage 9 for the gyroscope).
 
 **No Mac has been tested yet.** The table starts empty and is filled by hardware reports.
 
@@ -17,7 +17,7 @@ How to add a row: open a [hardware report](../../issues/new?template=hardware-re
 | Accelerometer is readable in-process, no root needed | Works on the maintainer's MacBook (recording in the test fixtures) | Medium: one machine so far |
 | M2 and newer expose it | Community reports | Medium |
 | Base M1 exposes it | Conflicting reports | Unknown |
-| Gyroscope is usage 9 with the same report layout | olvvier research | Low: not confirmed by Bingo |
+| Gyroscope is usage 9 with the same report layout | olvvier research | Low: not confirmed by Bango |
 | Intel Macs and desktop Macs | Not exposed the same way | Not supported |
 
 ## If the sensor is not found

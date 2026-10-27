@@ -7,7 +7,7 @@ import TapCore
 /// One character per key event matters: web-based and Electron apps read only the first character of an event, so
 /// sending words in one piece makes text vanish there.
 enum KeyTyper {
-    private static let queue = DispatchQueue(label: "app.bingo.keytyper")
+    private static let queue = DispatchQueue(label: "app.bango.keytyper")
     private static let backspaceKey: CGKeyCode = 51
 
     /// Queues an edit. Edits run in order on their own queue, so typing never freezes the interface.

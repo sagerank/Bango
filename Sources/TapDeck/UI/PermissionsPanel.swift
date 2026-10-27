@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import TapCore
 
-/// Every permission Bingo can use, in one list with one button. Used by the welcome tour and General.
+/// Every permission Bango can use, in one list with one button. Used by the welcome tour and General.
 struct PermissionsPanel: View {
     @EnvironmentObject private var store: ConfigStore
     @ObservedObject private var center = PermissionCenter.shared
@@ -23,7 +23,7 @@ struct PermissionsPanel: View {
 
             HStack(spacing: 10) {
                 if center.needsRestart {
-                    Button("Restart Bingo") { center.restartApp() }.buttonStyle(.pillPrimary)
+                    Button("Restart Bango") { center.restartApp() }.buttonStyle(.pillPrimary)
                 } else if center.isRunning {
                     ProgressView().controlSize(.small)
                     Text(center.current.map { "Waiting for \($0.title)…" } ?? "Working…")
@@ -37,7 +37,7 @@ struct PermissionsPanel: View {
                 Spacer()
                 Menu("More") {
                     Button("Check Automation too") { Task { await center.refreshAll() } }
-                    Button("Clear Bingo's permissions…") { confirmReset = true }
+                    Button("Clear Bango's permissions…") { confirmReset = true }
                 }
                 .menuStyle(.borderlessButton).fixedSize()
             }
@@ -60,14 +60,14 @@ struct PermissionsPanel: View {
                 if ticks % 3 == 0 { await center.refreshAutomationQuietly() }
             }
         }
-        .confirmationDialog("Clear every permission Bingo was given?", isPresented: $confirmReset) {
+        .confirmationDialog("Clear every permission Bango was given?", isPresented: $confirmReset) {
             Button("Clear permissions", role: .destructive) { Task { await center.resetAll() } }
         } message: {
             Text("Use this after installing a new build if a permission looks on but does not work.")
         }
     }
 
-    /// When this copy of Bingo started, so a restart can be told apart from no restart.
+    /// When this copy of Bango started, so a restart can be told apart from no restart.
     private static let startTime: String = {
         let start = NSRunningApplication.current.launchDate ?? Date(timeIntervalSinceNow: -ProcessInfo.processInfo.systemUptime)
         return start.formatted(date: .omitted, time: .standard)
@@ -90,16 +90,16 @@ struct PermissionsPanel: View {
                     Text("Not checked yet. Press Allow to ask macOS.").font(.caption2).foregroundStyle(Theme.secondary)
                 }
                 if item == .screenRecording && center.screenRecordingStillRefused {
-                    Text("Still not allowed after a restart. Bingo is probably an old entry from an earlier build, which looks switched on but does not count. Press Allow: Bingo clears the old entry and asks again. Then switch it on and restart Bingo.")
+                    Text("Still not allowed after a restart. Bango is probably an old entry from an earlier build, which looks switched on but does not count. Press Allow: Bango clears the old entry and asks again. Then switch it on and restart Bango.")
                         .font(.caption2).foregroundStyle(Theme.warning)
                 }
                 if state == .needsRestart {
-                    Text("Asked, not confirmed. If you switched Bingo on in System Settings, restart Bingo.")
+                    Text("Asked, not confirmed. If you switched Bango on in System Settings, restart Bango.")
                         .font(.caption2).foregroundStyle(Theme.warning)
-                    Text("This copy of Bingo started at \(Self.startTime). If that time did not change after you restarted, the restart did not happen: quit Bingo from the menu bar and open it again.")
+                    Text("This copy of Bango started at \(Self.startTime). If that time did not change after you restarted, the restart did not happen: quit Bango from the menu bar and open it again.")
                         .font(.caption2).foregroundStyle(Theme.secondary)
                 } else if state == .needsApproval {
-                    Text("Switch Bingo on in System Settings, Login Items.").font(.caption2).foregroundStyle(Theme.warning)
+                    Text("Switch Bango on in System Settings, Login Items.").font(.caption2).foregroundStyle(Theme.warning)
                 }
             }
             Spacer()

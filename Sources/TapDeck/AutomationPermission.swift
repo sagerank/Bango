@@ -2,7 +2,7 @@ import AppKit
 import CoreServices
 import Foundation
 
-/// The Automation permission: whether Bingo may send Apple events to another app such as System Events.
+/// The Automation permission: whether Bango may send Apple events to another app such as System Events.
 enum AutomationPermission {
     enum Status: Equatable {
         case granted

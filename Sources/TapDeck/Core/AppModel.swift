@@ -72,7 +72,7 @@ final class AppModel: ObservableObject {
             .sink { [weak self] _ in self?.store.flush() }
             .store(in: &cancellables)
 
-        // While the window is open Bingo is a normal app (Dock icon, Cmd+Tab, Force Quit, a Quit menu).
+        // While the window is open Bango is a normal app (Dock icon, Cmd+Tab, Force Quit, a Quit menu).
         // When it closes it goes back to the menu bar only.
         NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)
             .receive(on: DispatchQueue.main)
@@ -88,7 +88,7 @@ final class AppModel: ObservableObject {
             .store(in: &cancellables)
 
         if let damaged = store.recoveredFromDamagedFile {
-            NSLog("Bingo: settings file was damaged, moved to \(damaged.path)")
+            NSLog("Bango: settings file was damaged, moved to \(damaged.path)")
         }
     }
 
