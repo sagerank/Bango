@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The detector, gesture rules, profiles and safety policy use only Foundation,
+  # so they are tested on Linux where runners are cheap and fast.
+  core-tests:
+    name: TapCore tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+
+  # The real app, with the same tests, on Apple Silicon.
+  macos:
+    name: Build and test (macOS)
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      # For the drag-to-Applications disk image. If it fails, the build falls back to a plain image.
+      - run: brew install create-dmg || true
+      - run: swift --version
+      - run: swift test
+      - run: ./scripts/build.sh --unsigned
+      # Version and commit go into the artifact names so a new build is never mistaken for an old one.
+      - name: Name the build
+        id: meta
+        run: echo "name=$(tr -d '[:space:]' < VERSION)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Package the unsigned app
+        run: ditto -c -k --keepParent dist/Bingo.app dist/Bingo-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bingo-${{ steps.meta.outputs.name }}-app-zip
+          path: dist/Bingo-unsigned.zip
+          if-no-files-found: error
+      # Uploaded as a DMG so it keeps its layout. GitHub still wraps any artifact in a zip.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bingo-${{ steps.meta.outputs.name }}-DMG
+          path: dist/Bingo-*-unsigned.dmg
+          if-no-files-found: error
