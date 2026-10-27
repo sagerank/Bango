@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Permissions now have a guided wizard: one permission per screen (Accessibility, Screen Recording, Dictation, Open at login), what it is for, one button, and it moves on by itself once macOS says yes. It is the permissions step of the welcome tour, and a "Guided setup" button on the Setup page. The full list stays on Setup for anyone who wants it.
+- Fix: the macOS Accessibility dialog appeared four times. It is now shown at most once per launch.
+- **Not yet seen on a Mac.** If Accessibility is switched on in System Settings but Bango still says it is missing, remove Bango from the list with the minus button and add it again (the wizard says this after 15 seconds).
+
 ## 1.0.1
 
 - Fix: the detector could report a phantom tap in the first fraction of a second after start, before its noise floor had learned the room (the test `testLiftingAndCarryingTheMacIsNotATap` caught it, and CI on 1.0.0 was red because of it). Nothing is accepted for the first 0.4 s now.

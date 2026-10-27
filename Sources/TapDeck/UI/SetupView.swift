@@ -11,10 +11,25 @@ struct SetupView: View {
     @EnvironmentObject private var engine: Engine
     @State private var showPractice = false
     @State private var typingTest: String?
+    @State private var showWizard = false
 
     var body: some View {
         content
             .onAppear { center.markSetupSeen() }
+            .sheet(isPresented: $showWizard) {
+                VStack(spacing: 0) {
+                    PermissionWizard(onFinish: { showWizard = false }).padding(28)
+                    Divider().overlay(Theme.stroke)
+                    HStack {
+                        Spacer()
+                        Button("Close") { showWizard = false }.buttonStyle(.pill)
+                    }
+                    .padding(16)
+                }
+                .frame(minWidth: 540, minHeight: 520)
+                .background(Theme.background)
+                .preferredColorScheme(.dark)
+            }
             .sheet(isPresented: $showPractice) {
                 PracticeSheet()
                     .environmentObject(store)
@@ -67,7 +82,11 @@ struct SetupView: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(text: "Permissions")
+                HStack {
+                    SectionLabel(text: "Permissions")
+                    Spacer()
+                    Button("Guided setup") { showWizard = true }.buttonStyle(.pillPrimary)
+                }
                 PermissionsPanel()
             }
 

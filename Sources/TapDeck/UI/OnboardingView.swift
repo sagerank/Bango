@@ -69,10 +69,7 @@ struct OnboardingView: View {
                 }
             }
         case .permissions:
-            VStack(alignment: .leading, spacing: 14) {
-                PageHeader(title: "What Bango needs", subtitle: "Each line shows whether it is allowed. Press Allow on the ones you want. You can skip any of them and come back to Setup later.")
-                PermissionsPanel()
-            }
+            PermissionWizard(onFinish: { step = .tryIt })
         case .tryIt:
             VStack(alignment: .leading, spacing: 10) {
                 PageHeader(title: "Learn the taps", subtitle: "Follow the steps. Bango shows what it heard. Nothing will run yet.")
@@ -108,8 +105,11 @@ struct OnboardingView: View {
             Spacer()
             if step == .safeStart {
                 Button("Finish") { finish() }.buttonStyle(.pillPrimary)
+            } else if step == .permissions {
+                // The wizard has its own buttons. This only lets people leave it.
+                Button("Skip for now") { step = .tryIt }.buttonStyle(.pill)
             } else {
-                Button(step == .permissions && !permissions.allDone ? "Skip for now" : "Continue") {
+                Button("Continue") {
                     step = Step(rawValue: step.rawValue + 1) ?? .safeStart
                 }
                 .buttonStyle(.pillPrimary)
