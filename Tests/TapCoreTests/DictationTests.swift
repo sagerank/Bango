@@ -215,3 +215,52 @@ final class LiveTypistTests: XCTestCase {
         XCTAssertTrue(typist.update(partial: "good morning everyone").isEmpty)
     }
 }
+
+
+final class TranscriptStitcherTests: XCTestCase {
+    func testKeepsEarlierSentencesWhenTheRecogniserStartsOver() {
+        var stitcher = TranscriptStitcher()
+        stitcher.update("Hello there")
+        stitcher.update("Hello there my friend.")
+        stitcher.update("How")
+        stitcher.update("How are you")
+        XCTAssertEqual(stitcher.full, "Hello there my friend. How are you")
+    }
+
+    func testCorrectionsToTheLastWordsDoNotDuplicateText() {
+        var stitcher = TranscriptStitcher()
+        stitcher.update("I want to go their")
+        stitcher.update("I want to go there")
+        XCTAssertEqual(stitcher.full, "I want to go there")
+    }
+
+    func testNewStretchThatSharesTheFirstWordIsStillDetectedFromTheTimestamp() {
+        var stitcher = TranscriptStitcher()
+        stitcher.update("Babu Priya", start: 0.2)
+        stitcher.update("Babu", start: 6.0)
+        XCTAssertEqual(stitcher.full, "Babu Priya Babu")
+    }
+
+    func testCommitMakesTheNextReportANewStretch() {
+        var stitcher = TranscriptStitcher()
+        stitcher.update("First sentence.")
+        stitcher.commit()
+        stitcher.update("Second sentence.")
+        XCTAssertEqual(stitcher.full, "First sentence. Second sentence.")
+    }
+
+    func testTypistKeepsTypingAfterAPause() {
+        var stitcher = TranscriptStitcher()
+        var typist = LiveTypist()
+        stitcher.update("one two three")
+        _ = typist.update(partial: stitcher.full)
+        stitcher.update("one two three four")
+        _ = typist.update(partial: stitcher.full)
+        stitcher.update("five six")
+        _ = typist.update(partial: stitcher.full)
+        stitcher.update("five six seven")
+        let edit = typist.update(partial: stitcher.full)
+        XCTAssertFalse(edit.isEmpty)
+        XCTAssertTrue(typist.typed.hasPrefix("one two three four five"))
+    }
+}

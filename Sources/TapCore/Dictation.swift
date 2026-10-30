@@ -94,6 +94,62 @@ public enum DictationText {
     }
 }
 
+/// Joins what the recogniser says across pauses into one running transcript.
+///
+/// The recogniser reports the text of the current stretch of speech only. After a pause (or when it finishes a
+/// stretch by itself) the next report starts again from the first new word, so the earlier sentences are no longer
+/// in it. Without stitching, the running text stops being an extension of what was already typed and nothing more
+/// is ever typed, although the pill still shows the new words.
+public struct TranscriptStitcher: Equatable, Sendable {
+    /// Finished stretches of speech, in order.
+    public private(set) var committed = ""
+    private var current = ""
+    private var currentStart: Double?
+
+    public init() {}
+
+    /// Everything said so far.
+    public var full: String { Self.join(committed, current) }
+
+    /// A new report from the recogniser. `start` is when its first word began, in seconds, if known.
+    public mutating func update(_ text: String, start: Double? = nil) {
+        if startsNewStretch(text, start: start) { commit() }
+        current = text
+        if currentStart == nil || start != nil { currentStart = start ?? currentStart }
+    }
+
+    /// The recogniser ended this stretch (final result, or its task ended). Whatever comes next is a new stretch.
+    public mutating func commit() {
+        committed = Self.join(committed, current)
+        current = ""
+        currentStart = nil
+    }
+
+    private static func join(_ a: String, _ b: String) -> String {
+        let left = DictationText.clean(a), right = DictationText.clean(b)
+        if left.isEmpty { return right }
+        if right.isEmpty { return left }
+        return left + " " + right
+    }
+
+    private static func words(_ text: String) -> [String] {
+        DictationText.clean(text).split(separator: " ").map {
+            $0.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        }
+    }
+
+    /// Fixes to the last words are normal. A report that is much shorter, shares no opening word, or starts clearly
+    /// later in the audio is a fresh stretch, not a correction.
+    private func startsNewStretch(_ text: String, start: Double?) -> Bool {
+        let old = Self.words(current)
+        let new = Self.words(text)
+        guard !old.isEmpty, !new.isEmpty else { return false }
+        if let start, let currentStart, start - currentStart > 1.0 { return true }
+        if new.count + 1 < old.count { return true }
+        return old.count >= 2 && old[0] != new[0] && new.count <= old.count
+    }
+}
+
 /// Decides what to type into the text box while someone is speaking.
 ///
 /// The recogniser keeps changing its mind: it fixes the last words, and it adds capitals and punctuation to words

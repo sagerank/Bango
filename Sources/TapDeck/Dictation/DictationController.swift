@@ -29,6 +29,12 @@ final class DictationController: ObservableObject {
     private var typingAllowed = false
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var recognizer: SFSpeechRecognizer?
+    /// The microphone tap appends to whichever request is current, so a new one can be swapped in mid-session.
+    private let sink = RequestSink()
+    /// Keeps every sentence: the recogniser starts its text over after a pause.
+    private var stitcher = TranscriptStitcher()
+    private var restartedAt = Date.distantPast
     private var task: SFSpeechRecognitionTask?
     private var finalWaiter: CheckedContinuation<Void, Never>?
     private var idleFlush: Task<Void, Never>?
@@ -88,11 +94,8 @@ final class DictationController: ObservableObject {
             throw ActionError("On-device speech recognition is not available for \(locale.identifier). Add the language in System Settings, Keyboard, Dictation")
         }
 
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = true
-        request.addsPunctuation = true
-        self.request = request
+        self.recognizer = recognizer
+        stitcher = TranscriptStitcher()
         transcript = ""
         prepareTyping()
 
@@ -100,8 +103,9 @@ final class DictationController: ObservableObject {
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else { throw ActionError("No microphone was found") }
         input.removeTap(onBus: 0)
+        let sink = self.sink
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            request.append(buffer)
+            sink.append(buffer)
             let loudness = Self.loudness(of: buffer)
             Task { @MainActor in self?.level = loudness }
         }
@@ -113,24 +117,59 @@ final class DictationController: ObservableObject {
             throw ActionError("Could not start the microphone: \(error.localizedDescription)")
         }
 
-        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            let text = result?.bestTranscription.formattedString
-            let done = (result?.isFinal ?? false) || error != nil
-            Task { @MainActor in self?.heard(text: text, done: done) }
-        }
+        startRecognition()
 
         isListening = true
         pill.show(controller: self)
         scheduleSafetyStop()
     }
 
-    private func heard(text: String?, done: Bool) {
-        if let text {
-            transcript = text
-            lastHeardAt = Date()
-            typeLive(text)
+    /// Starts one recognition task on a fresh request. Called at the start, and again whenever the recogniser ends
+    /// a task by itself (it does after a long enough pause), so later sentences are still heard.
+    private func startRecognition() {
+        guard let recognizer else { return }
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = true
+        request.addsPunctuation = true
+        self.request = request
+        sink.set(request)
+        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            let text = result?.bestTranscription.formattedString
+            let start = result?.bestTranscription.segments.first?.timestamp
+            let done = (result?.isFinal ?? false) || error != nil
+            Task { @MainActor in self?.heard(text: text, start: start, done: done, request: request) }
         }
-        if done { finalArrived = true; resumeWaiter() }
+    }
+
+    private func heard(text: String?, start: Double?, done: Bool, request: SFSpeechAudioBufferRecognitionRequest) {
+        // A late result from a task that was already replaced or stopped must not disturb the current one.
+        guard request === self.request else { return }
+        if let text, !text.isEmpty {
+            stitcher.update(text, start: start)
+            transcript = stitcher.full
+            lastHeardAt = Date()
+            typeLive(transcript)
+        }
+        guard done else { return }
+        if session.isListening {
+            // The recogniser closed this stretch on its own while the person is still dictating. Keep what it
+            // heard and open a new one. The delay stops a tight loop if it keeps failing straight away.
+            stitcher.commit()
+            task?.cancel()
+            task = nil
+            self.request = nil
+            let wait = max(0, 0.3 - Date().timeIntervalSince(restartedAt))
+            restartedAt = Date().addingTimeInterval(wait)
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                guard let self, self.session.isListening, self.request == nil else { return }
+                self.startRecognition()
+            }
+        } else {
+            finalArrived = true
+            resumeWaiter()
+        }
     }
 
     // MARK: Typing into the app in front
@@ -236,6 +275,8 @@ final class DictationController: ObservableObject {
         task?.cancel()
         task = nil
         request = nil
+        sink.set(nil)
+        recognizer = nil
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         isListening = false
@@ -268,5 +309,21 @@ final class DictationController: ObservableObject {
         for index in 0..<frames { sum += channel[index] * channel[index] }
         let rms = (sum / Float(frames)).squareRoot()
         return Double(min(1, rms * 9))
+    }
+}
+
+/// Hands microphone buffers to the current speech request from the audio thread.
+private final class RequestSink: @unchecked Sendable {
+    private let lock = NSLock()
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+
+    func set(_ request: SFSpeechAudioBufferRecognitionRequest?) {
+        lock.lock(); defer { lock.unlock() }
+        self.request = request
+    }
+
+    func append(_ buffer: AVAudioPCMBuffer) {
+        lock.lock(); let current = request; lock.unlock()
+        current?.append(buffer)
     }
 }
