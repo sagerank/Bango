@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/sagerank/Bango/security/advisories/new
+    about: Please do not open a public issue for vulnerabilities. See SECURITY.md.
+  - name: Ask a question or share an idea
+    url: https://github.com/sagerank/Bango/discussions
+    about: Questions, ideas and show-and-tell. Turn on Discussions in repository settings first.
